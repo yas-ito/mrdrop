@@ -66,7 +66,12 @@ enum MrDrop {
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
         let encoded = filename.addingPercentEncoding(withAllowedCharacters: allowed) ?? "file"
-        guard let url = URL(string: "http://\(peer.host):\(peer.port)/put/\(encoded)") else { return nil }
+
+        // 🔴 IPv6 は角括弧で囲まないと URL にならない（`http://fe80::1:48630` は解釈できない）。
+        //    Bonjour の解決先が IPv6 になることは普通にあるので、ここで必ず包む。
+        var host = peer.host
+        if host.contains(":") && !host.hasPrefix("[") { host = "[\(host)]" }
+        guard let url = URL(string: "http://\(host):\(peer.port)/put/\(encoded)") else { return nil }
 
         var req = URLRequest(url: url)
         req.httpMethod = "PUT"

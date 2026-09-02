@@ -34,9 +34,11 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
+                // 🔴 結果をいちばん上に出す。Windows のブラウザ画面では
+                //    「送れているのに送れたことが伝わらず、同じ写真を4回送った」事故が起きた
+                if !uploader.jobs.isEmpty { jobsSection }
                 peerSection
                 sendSection
-                if !uploader.jobs.isEmpty { jobsSection }
             }
             .navigationTitle("MrDrop")
             .onAppear { discovery.start() }
@@ -84,12 +86,12 @@ struct ContentView: View {
     private var sendSection: some View {
         Section("送る") {
             PhotosPicker(selection: $photoItems, matching: .any(of: [.images, .videos])) {
-                Label("写真・動画を選ぶ", systemImage: "photo.on.rectangle")
+                Label("写真・動画を送る", systemImage: "photo.on.rectangle")
             }
             Button {
                 showFiles = true
             } label: {
-                Label("ファイルを選ぶ", systemImage: "folder")
+                Label("ファイルを送る", systemImage: "folder")
             }
             .fileImporter(isPresented: $showFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 if case let .success(urls) = result { sendFiles(urls) }
@@ -101,8 +103,19 @@ struct ContentView: View {
         }
     }
 
+    /// 🔴 「選ぶ＝送る」なので、終わったことをはっきり見せる。
+    private var sending: Int { uploader.jobs.filter { !$0.finished }.count }
+    private var sentOK:  Int { uploader.jobs.filter { $0.finished && $0.error == nil }.count }
+    private var failed:  Int { uploader.jobs.filter { $0.error != nil }.count }
+
+    private var jobsHeadline: String {
+        if sending > 0 { return "送っています（あと \(sending) 件）" }
+        if failed  > 0 { return "送れませんでした \(failed) 件 ／ 送りました \(sentOK) 件" }
+        return "✅ \(sentOK) 件 送りました"
+    }
+
     private var jobsSection: some View {
-        Section("様子") {
+        Section {
             ForEach(uploader.jobs) { j in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(j.filename).lineLimit(1)
@@ -117,6 +130,10 @@ struct ContentView: View {
                     }
                 }
             }
+        } header: {
+            Text(jobsHeadline)
+                .font(.headline)
+                .foregroundStyle(sending > 0 ? Color.primary : (failed > 0 ? Color.red : Color.green))
         }
     }
 

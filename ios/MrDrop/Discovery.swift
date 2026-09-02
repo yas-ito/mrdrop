@@ -68,8 +68,31 @@ final class Discovery: ObservableObject {
 
     /// Bonjour の結果は名前だけ。実際の住所は繋いでみないと分からないので、
     /// 一度だけ接続して remoteEndpoint から IP と番号を取り出す。
-    private func resolve(_ endpoint: NWEndpoint, name: String) {
-        let conn = NWConnection(to: endpoint, using: .tcp)
+    ///
+    /// 🔴 まず IPv4 に限って試す。Bonjour は IPv6 のリンクローカル（`fe80::…%en0`）を
+    ///    返すことがあり、ゾーン（`%en0`）を落とすと**繋がらない住所**になる。
+    ///    共有拡張は覚えた住所へそのまま送るので、ここで IPv4 を取れないと
+    ///    「アプリからは送れるのに、共有シートからだけ失敗する」になる。
+    ///    IPv4 を持たない相手のときだけ、制限を外してやり直す。
+    private func resolve(_ endpoint: NWEndpoint, name: String, forceIPv4: Bool = true) {
+        let params = NWParameters.tcp
+        if forceIPv4, let ip = params.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options {
+            ip.version = .v4
+        }
+        let conn = NWConnection(to: endpoint, using: params)
+
+        /// IPv4 で駄目だったときに、制限なしでもう一度だけ試す
+        let retryOrGiveUp: () -> Void = { [weak self] in
+            conn.cancel()
+            Task { @MainActor in
+                guard let self else { return }
+                if forceIPv4 {
+                    self.resolve(endpoint, name: name, forceIPv4: false)
+                } else {
+                    self.resolving.remove(name)
+                }
+            }
+        }
 
         conn.stateUpdateHandler = { [weak self] state in
             switch state {
@@ -86,12 +109,23 @@ final class Discovery: ObservableObject {
                     self?.resolving.remove(name)
                     guard let p = found else { return }
                     if !(self?.peers.contains(p) ?? true) { self?.peers.append(p) }
-                    // 1台しかいないなら黙って選んでおく（毎回選ばせない）
-                    if MrDrop.lastPeer == nil { MrDrop.lastPeer = p }
+                    // 相手が1台だけのときは黙って選んでおく（毎回選ばせない）
+                    if MrDrop.lastPeer == nil, self?.peers.count == 1 { MrDrop.lastPeer = p }
                 }
-            case .failed, .cancelled:
-                conn.cancel()
-                Task { @MainActor in self?.resolving.remove(name) }
+
+            case .failed:
+                retryOrGiveUp()
+
+            // IPv4 が無い相手は .failed ではなく .waiting のまま止まることがある。
+            // LAN 内の接続は本来すぐ繋がるので、待ちに入った時点で見切る。
+            case .waiting:
+                if forceIPv4 { retryOrGiveUp() }
+
+            // 上で自分から cancel した分。ここで後片付けをすると
+            // .ready の直後にもう一度走って二重に動く
+            case .cancelled:
+                break
+
             default:
                 break
             }
