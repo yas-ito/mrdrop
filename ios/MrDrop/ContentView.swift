@@ -29,7 +29,13 @@ struct PickedFile: Transferable {
         let dir = try MrDrop.stagingDirectory()
         let dest = dir.appendingPathComponent(UUID().uuidString + "-" + received.file.lastPathComponent)
         try? FileManager.default.removeItem(at: dest)
-        try FileManager.default.copyItem(at: received.file, to: dest)
+        // 🔴 1時間の動画は数GB。同じディスクなので**ハードリンクなら一瞬**で、
+        //    容量も食わない。できない相手（別ボリューム）のときだけコピーに落ちる。
+        do {
+            try FileManager.default.linkItem(at: received.file, to: dest)
+        } catch {
+            try FileManager.default.copyItem(at: received.file, to: dest)
+        }
         return PickedFile(url: dest, name: received.file.lastPathComponent)
     }
 }
@@ -119,11 +125,13 @@ struct ContentView: View {
     }
 
     /// 🔴 「選ぶ＝送る」なので、終わったことをはっきり見せる。
-    private var sending: Int { uploader.jobs.filter { !$0.finished }.count }
+    private var staging: Int { uploader.jobs.filter { $0.staging }.count }
+    private var sending: Int { uploader.jobs.filter { !$0.finished && !$0.staging }.count }
     private var sentOK:  Int { uploader.jobs.filter { $0.finished && $0.error == nil }.count }
     private var failed:  Int { uploader.jobs.filter { $0.error != nil }.count }
 
     private var jobsHeadline: String {
+        if staging > 0 { return "取り込んでいます（\(staging) 件）… 長い動画は数分かかります" }
         if sending > 0 { return "送っています（あと \(sending) 件）" }
         if failed  > 0 { return "送れませんでした \(failed) 件 ／ 送りました \(sentOK) 件" }
         return "✅ \(sentOK) 件 送りました"
@@ -134,7 +142,9 @@ struct ContentView: View {
             ForEach(uploader.jobs) { j in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(j.filename).lineLimit(1)
-                    if let e = j.error {
+                    if j.staging {
+                        ProgressView()
+                    } else if let e = j.error {
                         Text(e).font(.caption).foregroundStyle(.red)
                     } else if j.finished {
                         Text("送りました").font(.caption).foregroundStyle(.green)
@@ -148,7 +158,7 @@ struct ContentView: View {
         } header: {
             Text(jobsHeadline)
                 .font(.headline)
-                .foregroundStyle(sending > 0 ? Color.primary : (failed > 0 ? Color.red : Color.green))
+                .foregroundStyle(sending + staging > 0 ? Color.primary : (failed > 0 ? Color.red : Color.green))
         }
     }
 
@@ -163,12 +173,19 @@ struct ContentView: View {
         guard let p = currentPeer() else { message = "先に送り先の PC を選んでください。"; return }
         Task {
             for item in items {
+                // 🔴 iOS が書き出し終えるまで `loadTransferable` は返ってこない。
+                //    1時間の動画なら数分、iCloud にしか無ければダウンロードから始まる。
+                //    先に行を出しておかないと「押したのに無反応」に見える。
+                let ticket = uploader.beginStaging("取り込んでいます…")
                 do {
                     if let f = try await item.loadTransferable(type: PickedFile.self) {
+                        uploader.endStaging(ticket)
                         uploader.send(fileURL: f.url, filename: f.name, to: p, modified: nil)
+                    } else {
+                        uploader.failStaging(ticket, "iOS がこの項目を渡してくれませんでした")
                     }
                 } catch {
-                    message = error.localizedDescription
+                    uploader.failStaging(ticket, error.localizedDescription)
                 }
             }
             photoItems = []

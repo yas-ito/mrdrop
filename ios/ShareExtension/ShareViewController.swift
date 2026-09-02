@@ -102,7 +102,12 @@ final class ShareViewController: UIViewController {
                 do {
                     let dir = try MrDrop.stagingDirectory()
                     let dest = dir.appendingPathComponent(UUID().uuidString + "-" + url.lastPathComponent)
-                    try FileManager.default.copyItem(at: url, to: dest)
+                    // 🔴 数GB の動画を複製しない。同じディスクならハードリンクで一瞬
+                    do {
+                        try FileManager.default.linkItem(at: url, to: dest)
+                    } catch {
+                        try FileManager.default.copyItem(at: url, to: dest)
+                    }
                     cont.resume(returning: (dest, url.lastPathComponent))
                 } catch {
                     cont.resume(returning: nil)
