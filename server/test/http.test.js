@@ -24,7 +24,7 @@ async function req(port, method, p, body, headers = {}) {
 module.exports = async function (t) {
   const { suite, eq, ok } = t;
 
-  const base = await fsp.mkdtemp(path.join(os.tmpdir(), "yasdrop-test-"));
+  const base = await fsp.mkdtemp(path.join(os.tmpdir(), "mrdrop-test-"));
   const cfg = {
     inbox: path.join(base, "in"),
     outbox: path.join(base, "out"),
@@ -104,7 +104,7 @@ module.exports = async function (t) {
 
   await suite("名乗りと道", async () => {
     const info = await req(port, "GET", "/api/info");
-    eq(info.json.app, "yasdrop", "名乗る");
+    eq(info.json.app, "mrdrop", "名乗る");
     eq(info.json.name, "テスト PC", "PC 名を返す");
     eq((await req(port, "GET", "/health")).text, "ok", "生存確認");
     eq((await req(port, "GET", "/nowhere")).status, 404, "無い道は 404");
@@ -120,7 +120,7 @@ module.exports = async function (t) {
     eq((await req(p2, "GET", "/api/info")).status, 401, "合言葉なしは断る");
     eq((await req(p2, "GET", "/api/info?t=chigau")).status, 401, "違う合言葉も断る");
     eq((await req(p2, "GET", "/api/info?t=himitsu")).status, 200, "合っていれば通る");
-    eq((await req(p2, "GET", "/api/info", null, { "x-yasdrop-token": "himitsu" })).status, 200, "ヘッダでも通る");
+    eq((await req(p2, "GET", "/api/info", null, { "x-mrdrop-token": "himitsu" })).status, 200, "ヘッダでも通る");
     await new Promise((r) => s2.close(r));
   });
 

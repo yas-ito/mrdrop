@@ -1,4 +1,4 @@
-# YasDrop
+# Mr.Drop
 
 iPhone から、同じ Wi-Fi にいる Windows へ写真・動画・ファイルを送る道具。
 AirDrop と同じ操作感を目指しています。クラウドを通りません。端末どうしで直接送ります。
@@ -16,13 +16,13 @@ AirDrop と同じ操作感を目指しています。クラウドを通りませ
 ### 1. Windows で動かす
 
 ```bash
-node server/yasdrop.js
+node server/mrdrop.js
 ```
 
 こう出ます。
 
 ```
-  YasDrop 1.0.0   yas
+  Mr.Drop 1.0.0   yas
 ────────────────────────────────────────────────────
   受信箱  C:\Users\yasma\Desktop\受信箱
   送信箱  C:\Users\yasma\Desktop\送信箱
@@ -31,7 +31,7 @@ node server/yasdrop.js
     http://yas.local:48630
     http://192.168.10.105:48630      （イーサネット）
 ────────────────────────────────────────────────────
-  自動発見  _yasdrop._tcp で広告中
+  自動発見  _mrdrop._tcp で広告中
 ```
 
 ### 2. iPhone の Safari で開く
@@ -88,7 +88,7 @@ node server/yasdrop.js
 `ios/` にソースがあります。**Xcode が要るので Mac で作ります。**
 手順は [`ios/README.md`](ios/README.md) を見てください。
 
-アプリを入れると、写真アプリの共有ボタンに YasDrop が並びます。
+アプリを入れると、写真アプリの共有ボタンに Mr.Drop が並びます。
 これが AirDrop と同じ導線になります。
 
 ---
@@ -99,7 +99,7 @@ node server/yasdrop.js
 |---|---|
 | iPhone から開けない | PC と同じ Wi-Fi か。`install-windows.ps1` でファイアウォールを開けたか |
 | `.local` で開けない | 代わりに IP（`http://192.168.…`）で開く |
-| アプリが PC を見つけない | `node server/yasdrop.js --browse` で PC 自身が見つけられるか確かめる。<br>見つかるならアプリ側（`Info.plist` の `NSBonjourServices`）を疑う |
+| アプリが PC を見つけない | `node server/mrdrop.js --browse` で PC 自身が見つけられるか確かめる。<br>見つかるならアプリ側（`Info.plist` の `NSBonjourServices`）を疑う |
 | 大きい動画が途中で止まる | 半端なファイルは受信箱に出さない作りです。もう一度送ってください |
 | 自動起動しているか分からない | `.\scripts\install-windows.ps1 -Status` |
 

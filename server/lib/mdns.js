@@ -1,5 +1,5 @@
 "use strict";
-// 最小の mDNS（Bonjour）レスポンダ。`_yasdrop._tcp.local` を広告して、
+// 最小の mDNS（Bonjour）レスポンダ。`_mrdrop._tcp.local` を広告して、
 // iPhone 側が「同じ Wi-Fi にいる PC」を設定ゼロで見つけられるようにする。
 //
 // 🔴 外部パッケージは使わない。npm install なしでいきなり動くこと自体が価値なので、
@@ -209,7 +209,7 @@ function addressFacing(remote) {
 class Responder extends EventEmitter {
   constructor(opts) {
     super();
-    this.serviceType = (opts.serviceType || "_yasdrop._tcp") + ".local";
+    this.serviceType = (opts.serviceType || "_mrdrop._tcp") + ".local";
     this.instance = String(opts.instance || os.hostname()).replace(/\./g, "-");
     this.instanceFqdn = `${this.instance}.${this.serviceType}`;
     this.host = `${String(opts.hostname || os.hostname()).replace(/\./g, "-")}.local`;
@@ -341,8 +341,8 @@ class Responder extends EventEmitter {
   }
 }
 
-// 手元で確かめる用。`_yasdrop._tcp.local` を尋ねて、返ってきたものを集める。
-function browse(ms = 2500, serviceType = "_yasdrop._tcp.local") {
+// 手元で確かめる用。`_mrdrop._tcp.local` を尋ねて、返ってきたものを集める。
+function browse(ms = 2500, serviceType = "_mrdrop._tcp.local") {
   return new Promise((resolve) => {
     const found = new Map();
     const sock = dgram.createSocket({ type: "udp4", reuseAddr: true });

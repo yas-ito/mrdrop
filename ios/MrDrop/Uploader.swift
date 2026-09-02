@@ -23,7 +23,7 @@ final class Uploader: NSObject, ObservableObject {
     init(identifier: String) {
         super.init()
         let c = URLSessionConfiguration.background(withIdentifier: identifier)
-        c.sharedContainerIdentifier = YasDrop.appGroup   // 🔴 これが無いと共有拡張から送れない
+        c.sharedContainerIdentifier = MrDrop.appGroup   // 🔴 これが無いと共有拡張から送れない
         c.isDiscretionary = false                        // すぐ送る（OS の都合で後回しにさせない）
         c.sessionSendsLaunchEvents = true
         c.allowsCellularAccess = false                   // LAN 専用。モバイル通信では意味がない
@@ -33,8 +33,8 @@ final class Uploader: NSObject, ObservableObject {
 
     /// - Parameter fileURL: App Group の中に置いた実体。送り終えたら消える。
     @discardableResult
-    func send(fileURL: URL, filename: String, to peer: YasDrop.Peer, modified: Date?) -> Bool {
-        guard let req = YasDrop.uploadRequest(to: peer, filename: filename, modified: modified) else { return false }
+    func send(fileURL: URL, filename: String, to peer: MrDrop.Peer, modified: Date?) -> Bool {
+        guard let req = MrDrop.uploadRequest(to: peer, filename: filename, modified: modified) else { return false }
         let task = session.uploadTask(with: req, fromFile: fileURL)
         task.taskDescription = fileURL.path              // 済んだら消すために覚えておく
         let size = (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int64) ?? nil

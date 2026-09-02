@@ -13,7 +13,7 @@ struct PickedFile: Transferable {
         FileRepresentation(contentType: .item) { f in
             SentTransferredFile(f.url)
         } importing: { received in
-            let dir = try YasDrop.stagingDirectory()
+            let dir = try MrDrop.stagingDirectory()
             let dest = dir.appendingPathComponent(UUID().uuidString + "-" + received.file.lastPathComponent)
             try? FileManager.default.removeItem(at: dest)
             try FileManager.default.copyItem(at: received.file, to: dest)
@@ -24,9 +24,9 @@ struct PickedFile: Transferable {
 
 struct ContentView: View {
     @StateObject private var discovery = Discovery()
-    @StateObject private var uploader = Uploader(identifier: YasDrop.sessionIDApp)
+    @StateObject private var uploader = Uploader(identifier: MrDrop.sessionIDApp)
 
-    @State private var peer: YasDrop.Peer? = YasDrop.lastPeer
+    @State private var peer: MrDrop.Peer? = MrDrop.lastPeer
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showFiles = false
     @State private var message: String?
@@ -38,7 +38,7 @@ struct ContentView: View {
                 sendSection
                 if !uploader.jobs.isEmpty { jobsSection }
             }
-            .navigationTitle("YasDrop")
+            .navigationTitle("MrDrop")
             .onAppear { discovery.start() }
             .onDisappear { discovery.stop() }
             .alert("お知らせ", isPresented: .constant(message != nil)) {
@@ -60,7 +60,7 @@ struct ContentView: View {
             ForEach(discovery.peers) { p in
                 Button {
                     peer = p
-                    YasDrop.lastPeer = p
+                    MrDrop.lastPeer = p
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -77,7 +77,7 @@ struct ContentView: View {
         } header: {
             Text("送り先の PC")
         } footer: {
-            Text("見つからないときは、PC で YasDrop が動いているか、同じ Wi-Fi につながっているかを確かめてください。")
+            Text("見つからないときは、PC で MrDrop が動いているか、同じ Wi-Fi につながっているかを確かめてください。")
         }
     }
 
@@ -120,9 +120,9 @@ struct ContentView: View {
         }
     }
 
-    private func currentPeer() -> YasDrop.Peer? {
+    private func currentPeer() -> MrDrop.Peer? {
         if let p = peer { return p }
-        if let p = YasDrop.lastPeer { return p }
+        if let p = MrDrop.lastPeer { return p }
         if let p = discovery.peers.first { return p }
         return nil
     }
@@ -150,7 +150,7 @@ struct ContentView: View {
             let needsStop = u.startAccessingSecurityScopedResource()
             defer { if needsStop { u.stopAccessingSecurityScopedResource() } }
             do {
-                let dir = try YasDrop.stagingDirectory()
+                let dir = try MrDrop.stagingDirectory()
                 let dest = dir.appendingPathComponent(UUID().uuidString + "-" + u.lastPathComponent)
                 try FileManager.default.copyItem(at: u, to: dest)
                 uploader.send(fileURL: dest, filename: u.lastPathComponent, to: p, modified: nil)

@@ -11,7 +11,7 @@ const { pipeline } = require("stream/promises");
 const { safeName, uniqueName, humanSize } = require("./names");
 const { page } = require("./ui");
 
-const PART_DIR = ".yasdrop-part";      // 書きかけの置き場（受信箱の中に隠す）
+const PART_DIR = ".mrdrop-part";      // 書きかけの置き場（受信箱の中に隠す）
 
 // LAN の外からは相手にしない。ルータの穴あけ事故で世界に晒される事態を防ぐ。
 function isLocalAddress(ip) {
@@ -88,7 +88,7 @@ function createServer(cfg, log = console.log) {
 
   const authOk = (req, url) => {
     if (!cfg.token) return true;
-    const given = req.headers["x-yasdrop-token"] || url.searchParams.get("t") || "";
+    const given = req.headers["x-mrdrop-token"] || url.searchParams.get("t") || "";
     // 長さの違いで漏れないように、固定長のハッシュ同士で比べる
     const h = (s) => crypto.createHash("sha256").update(String(s)).digest();
     return crypto.timingSafeEqual(h(given), h(cfg.token));
@@ -115,7 +115,7 @@ function createServer(cfg, log = console.log) {
 
       // ── この PC の名乗り（iPhone アプリが最初に叩く） ──
       if (req.method === "GET" && url.pathname === "/api/info") {
-        return json(res, 200, { app: "yasdrop", version: cfg.version, name: cfg.displayName, needsToken: !!cfg.token });
+        return json(res, 200, { app: "mrdrop", version: cfg.version, name: cfg.displayName, needsToken: !!cfg.token });
       }
 
       // ── 送信箱の一覧（PC → iPhone） ──
@@ -161,7 +161,7 @@ function createServer(cfg, log = console.log) {
           return text(res, 400, "大きさが合いません");
         }
         const saved = await commit(tmp, inbox, wanted);
-        const mod = Number(req.headers["x-yasdrop-modified"]);
+        const mod = Number(req.headers["x-mrdrop-modified"]);
         if (Number.isFinite(mod) && mod > 0) {
           try { await fsp.utimes(path.join(inbox, saved), new Date(mod), new Date(mod)); } catch { /* 出来なくても構わない */ }
         }

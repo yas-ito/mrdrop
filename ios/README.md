@@ -13,13 +13,16 @@ Xcode → **File ▸ New ▸ Project ▸ iOS ▸ App**
 
 | 項目 | 値 |
 |---|---|
-| Product Name | `YasDrop` |
+| Product Name | `MrDrop`（**点を入れない**。識別子に使われるので） |
 | Interface | SwiftUI |
 | Language | Swift |
 | Minimum Deployments | **iOS 17.0**（`onChange` の新しい書き方を使っています） |
 | Organization Identifier | `jp.yastools` |
 
-Bundle Identifier は `jp.yastools.yasdrop` になります。
+Bundle Identifier は `jp.yastools.mrdrop` になります。
+
+作ったあと、**General ▸ Display Name を `Mr.Drop`** にしてください。
+ホーム画面と共有シートに出る名前がこれになります（Product Name は内部用なので点なし）。
 
 ## 2. 共有拡張のターゲットを足す
 
@@ -28,7 +31,7 @@ Bundle Identifier は `jp.yastools.yasdrop` になります。
 | 項目 | 値 |
 |---|---|
 | Product Name | `ShareExtension` |
-| Bundle Identifier | `jp.yastools.yasdrop.ShareExtension`（自動でこうなる） |
+| Bundle Identifier | `jp.yastools.mrdrop.ShareExtension`（自動でこうなる） |
 
 「Activate scheme?」は **Cancel** で構いません。
 
@@ -36,11 +39,11 @@ Bundle Identifier は `jp.yastools.yasdrop` になります。
 
 | ファイル | 入れるターゲット |
 |---|---|
-| `Shared/YasDropShared.swift` | 🔴 **YasDrop と ShareExtension の両方** |
-| `YasDrop/Uploader.swift` | 🔴 **両方**（拡張も転送を始めるため） |
-| `YasDrop/YasDropApp.swift` | YasDrop のみ |
-| `YasDrop/ContentView.swift` | YasDrop のみ |
-| `YasDrop/Discovery.swift` | YasDrop のみ |
+| `Shared/MrDropShared.swift` | 🔴 **MrDrop と ShareExtension の両方** |
+| `MrDrop/Uploader.swift` | 🔴 **両方**（拡張も転送を始めるため） |
+| `MrDrop/MrDropApp.swift` | MrDrop のみ |
+| `MrDrop/ContentView.swift` | MrDrop のみ |
+| `MrDrop/Discovery.swift` | MrDrop のみ |
 | `ShareExtension/ShareViewController.swift` | ShareExtension のみ（生成された同名ファイルを置き換える） |
 
 ⚠️ 「両方」のものは、追加時の **Target Membership** で2つともチェックを入れてください。
@@ -53,15 +56,15 @@ Bundle Identifier は `jp.yastools.yasdrop` になります。
 両方に同じものを足します:
 
 ```
-group.jp.yastools.yasdrop
+group.jp.yastools.mrdrop
 ```
 
 🔴 これが無いと、拡張がコピーしたファイルを転送側が読めません。
-`YasDropShared.swift` の `appGroup` と**文字列を完全に一致させること**。
+`MrDropShared.swift` の `appGroup` と**文字列を完全に一致させること**。
 
 ## 5. Info.plist に足す（🔴 ここが最大の罠）
 
-### YasDrop（本体）
+### MrDrop（本体）
 
 ```xml
 <key>NSLocalNetworkUsageDescription</key>
@@ -69,7 +72,7 @@ group.jp.yastools.yasdrop
 
 <key>NSBonjourServices</key>
 <array>
-  <string>_yasdrop._tcp</string>
+  <string>_mrdrop._tcp</string>
 </array>
 
 <key>NSAppTransportSecurity</key>
@@ -112,10 +115,10 @@ group.jp.yastools.yasdrop
 
 ## 7. 動かし方（初回）
 
-1. **先に Windows で受信サーバーを動かしておく**（`node server/yasdrop.js`）
-2. iPhone で YasDrop アプリを開く → 「ローカルネットワーク」の許可を **許可**
+1. **先に Windows で受信サーバーを動かしておく**（`node server/mrdrop.js`）
+2. iPhone で Mr.Drop アプリを開く → 「ローカルネットワーク」の許可を **許可**
 3. PC の名前が一覧に出る → タップして選ぶ
-4. 写真アプリ → 共有 → **YasDrop** が並ぶ
+4. 写真アプリ → 共有 → **Mr.Drop** が並ぶ
 
 🔴 **手順3を一度やるまで、共有シートからは送れません。**
 拡張は「最後に選んだ PC」を見て送るので、まだ何も選ばれていないと

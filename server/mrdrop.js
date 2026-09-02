@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 "use strict";
-// YasDrop 受信サーバー — iPhone から同じ Wi-Fi のこの PC へ送るための常駐。
+// MrDrop 受信サーバー — iPhone から同じ Wi-Fi のこの PC へ送るための常駐。
 //
-//   node server/yasdrop.js              ふつうに起動する
-//   node server/yasdrop.js --port 9000  番号を変えて起動する
-//   node server/yasdrop.js --browse     いま LAN で見えている YasDrop を探す（動作確認用）
+//   node server/mrdrop.js              ふつうに起動する
+//   node server/mrdrop.js --port 9000  番号を変えて起動する
+//   node server/mrdrop.js --browse     いま LAN で見えている MrDrop を探す（動作確認用）
 //
 // 🔴 npm install は要らない。外部パッケージを1つも使っていない。
 
@@ -55,7 +55,7 @@ async function main() {
     server.listen(cfg.port, "0.0.0.0", resolve);
   }).catch((e) => {
     if (e.code === "EADDRINUSE") {
-      console.error(`🔴 ${cfg.port} 番はすでに使われています。config.json の port を変えるか、先に動いている YasDrop を終わらせてください。`);
+      console.error(`🔴 ${cfg.port} 番はすでに使われています。config.json の port を変えるか、先に動いている MrDrop を終わらせてください。`);
     } else {
       console.error("🔴 起動できませんでした:", e.message);
     }
@@ -74,7 +74,7 @@ async function main() {
 
   const line = "─".repeat(52);
   console.log("");
-  console.log(`  YasDrop ${VERSION}   ${cfg.displayName}`);
+  console.log(`  Mr.Drop ${VERSION}   ${cfg.displayName}`);
   console.log(line);
   console.log(`  受信箱  ${cfg.inbox}`);
   console.log(`  送信箱  ${cfg.outbox}`);
@@ -84,7 +84,7 @@ async function main() {
   for (const a of localIPv4s()) console.log(`    http://${a.address}:${cfg.port}      （${a.iface}）`);
   console.log(line);
   console.log(mdnsOk
-    ? "  自動発見  _yasdrop._tcp で広告中（iPhone アプリは設定なしで見つけます）"
+    ? "  自動発見  _mrdrop._tcp で広告中（iPhone アプリは設定なしで見つけます）"
     : "  自動発見  使えません（ブラウザからは使えます）");
   if (cfg.token) console.log("  合言葉    設定されています（URL に ?t=… が要ります）");
   console.log("  終わるには Ctrl+C");

@@ -1,12 +1,12 @@
 {
-  "name": "yasdrop",
+  "name": "mrdrop",
   "version": "1.0.0",
   "private": true,
-  "description": "iPhone から同じ Wi-Fi の Windows へ送る（AirDrop の代わり）",
-  "main": "server/yasdrop.js",
+  "description": "iPhone から同じ Wi-Fi の Windows へ送る（AirDrop の代わり・Mr.Drop）",
+  "main": "server/mrdrop.js",
   "scripts": {
-    "start": "node server/yasdrop.js",
-    "browse": "node server/yasdrop.js --browse",
+    "start": "node server/mrdrop.js",
+    "browse": "node server/mrdrop.js --browse",
     "test": "node server/test/run.js"
   },
   "engines": { "node": ">=18" }

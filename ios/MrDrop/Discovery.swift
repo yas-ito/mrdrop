@@ -1,18 +1,18 @@
 import Foundation
 import Network
 
-/// 同じ Wi-Fi にいる YasDrop の PC を、設定ゼロで見つける。
+/// 同じ Wi-Fi にいる MrDrop の PC を、設定ゼロで見つける。
 ///
 /// 🔴 ここが動かないときに疑う順番:
-///   1. Info.plist の NSBonjourServices に "_yasdrop._tcp" があるか
+///   1. Info.plist の NSBonjourServices に "_mrdrop._tcp" があるか
 ///      （無いと権限ダイアログすら出ずに、ただ何も見つからない。いちばん多い罠）
 ///   2. NSLocalNetworkUsageDescription があるか
 ///   3. iPhone と PC が同じ Wi-Fi か（PC が有線でも、同じルータなら届く）
-///   4. PC 側で `node server/yasdrop.js --browse` が自分を見つけられるか
+///   4. PC 側で `node server/mrdrop.js --browse` が自分を見つけられるか
 @MainActor
 final class Discovery: ObservableObject {
 
-    @Published private(set) var peers: [YasDrop.Peer] = []
+    @Published private(set) var peers: [MrDrop.Peer] = []
     @Published private(set) var isSearching = false
 
     private var browser: NWBrowser?
@@ -23,7 +23,7 @@ final class Discovery: ObservableObject {
         let params = NWParameters()
         params.includePeerToPeer = false
 
-        let b = NWBrowser(for: .bonjourWithTXTRecord(type: YasDrop.serviceType, domain: nil), using: params)
+        let b = NWBrowser(for: .bonjourWithTXTRecord(type: MrDrop.serviceType, domain: nil), using: params)
 
         b.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
@@ -74,12 +74,12 @@ final class Discovery: ObservableObject {
         conn.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
-                var found: YasDrop.Peer?
+                var found: MrDrop.Peer?
                 if let path = conn.currentPath, case let .hostPort(host, port) = path.remoteEndpoint {
                     var h = "\(host)"
                     // fe80::1%en0 の %en0 を落とす。付いたままだと URL に使えない
                     if let i = h.firstIndex(of: "%") { h = String(h[h.startIndex..<i]) }
-                    found = YasDrop.Peer(name: name, host: h, port: Int(port.rawValue))
+                    found = MrDrop.Peer(name: name, host: h, port: Int(port.rawValue))
                 }
                 conn.cancel()
                 Task { @MainActor in
@@ -87,7 +87,7 @@ final class Discovery: ObservableObject {
                     guard let p = found else { return }
                     if !(self?.peers.contains(p) ?? true) { self?.peers.append(p) }
                     // 1台しかいないなら黙って選んでおく（毎回選ばせない）
-                    if YasDrop.lastPeer == nil { YasDrop.lastPeer = p }
+                    if MrDrop.lastPeer == nil { MrDrop.lastPeer = p }
                 }
             case .failed, .cancelled:
                 conn.cancel()

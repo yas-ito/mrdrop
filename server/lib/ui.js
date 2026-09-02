@@ -17,9 +17,9 @@ function page(cfg) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="YasDrop">
+<meta name="apple-mobile-web-app-title" content="Mr.Drop">
 <meta name="theme-color" content="#0b0d12">
-<title>${name} へ送る — YasDrop</title>
+<title>${name} へ送る — Mr.Drop</title>
 <style>
   :root{
     --bg:#f4f5f8; --card:#fff; --text:#12151c; --sub:#5d6472; --line:#dfe2ea;
@@ -63,7 +63,7 @@ function page(cfg) {
 </head>
 <body>
 <div class="wrap">
-  <header><h1>YasDrop</h1><span class="to">${name} へ送る</span></header>
+  <header><h1>Mr.Drop</h1><span class="to">${name} へ送る</span></header>
 
   <div class="card">
     <div class="btns">
@@ -122,7 +122,7 @@ function pump(){
   var f=job.file, row=job.row, bar=row.querySelector(".bar>i"), sz=row.querySelector(".sz");
   var xhr=new XMLHttpRequest();
   xhr.open("PUT", q("/put/"+encodeURIComponent(f.name)));
-  if(f.lastModified) xhr.setRequestHeader("X-YasDrop-Modified", String(f.lastModified));
+  if(f.lastModified) xhr.setRequestHeader("X-MrDrop-Modified", String(f.lastModified));
   xhr.upload.onprogress=function(e){
     if(!e.lengthComputable) return;
     var p=e.loaded/e.total;

@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 ///    バックグラウンド転送に渡したら即座に手を引く。
 final class ShareViewController: UIViewController {
 
-    private let uploader = Uploader(identifier: YasDrop.sessionIDExtension)
+    private let uploader = Uploader(identifier: MrDrop.sessionIDExtension)
     private let card = UIView()
     private let label = UILabel()
     private let spinner = UIActivityIndicatorView(style: .medium)
@@ -55,8 +55,8 @@ final class ShareViewController: UIViewController {
     }
 
     private func process() async {
-        guard let peer = YasDrop.lastPeer else {
-            finish("先に YasDrop アプリを一度開いて、送り先の PC を選んでください。")
+        guard let peer = MrDrop.lastPeer else {
+            finish("先に MrDrop アプリを一度開いて、送り先の PC を選んでください。")
             return
         }
 
@@ -81,7 +81,7 @@ final class ShareViewController: UIViewController {
             provider.loadFileRepresentation(forTypeIdentifier: UTType.item.identifier) { url, _ in
                 guard let url else { cont.resume(returning: nil); return }
                 do {
-                    let dir = try YasDrop.stagingDirectory()
+                    let dir = try MrDrop.stagingDirectory()
                     let dest = dir.appendingPathComponent(UUID().uuidString + "-" + url.lastPathComponent)
                     try FileManager.default.copyItem(at: url, to: dest)
                     cont.resume(returning: (dest, url.lastPathComponent))

@@ -1,4 +1,4 @@
-﻿# YasDrop を「いつでも使える状態」にする。
+﻿# Mr.Drop を「いつでも使える状態」にする。
 #
 #   .\scripts\install-windows.ps1            ファイアウォールを開けて、ログオン時に自動起動させる
 #   .\scripts\install-windows.ps1 -Status    いまどうなっているかを見るだけ
@@ -15,13 +15,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Repo      = Split-Path -Parent $PSScriptRoot
-$Entry     = Join-Path $Repo "server\yasdrop.js"
-$TaskName  = "YasDrop"
-$RuleTcp   = "YasDrop (受信 TCP)"
-$RuleUdp   = "YasDrop (自動発見 mDNS UDP 5353)"
-$AppDir    = Join-Path $env:LOCALAPPDATA "YasDrop"
+$Entry     = Join-Path $Repo "server\mrdrop.js"
+$TaskName  = "MrDrop"
+$RuleTcp   = "MrDrop (受信 TCP)"
+$RuleUdp   = "MrDrop (自動発見 mDNS UDP 5353)"
+$AppDir    = Join-Path $env:LOCALAPPDATA "MrDrop"
 $Launcher  = Join-Path $AppDir "start-hidden.vbs"
-$LogFile   = Join-Path $AppDir "yasdrop.log"
+$LogFile   = Join-Path $AppDir "mrdrop.log"
 
 function Head($s) { Write-Host ""; Write-Host "== $s" -ForegroundColor Cyan }
 function Say($s)  { Write-Host "   $s" }
@@ -44,7 +44,7 @@ function Get-Port {
 
 # ── 状態を見る ─────────────────────────────────────────────
 if ($Status) {
-  Head "YasDrop の状態"
+  Head "Mr.Drop の状態"
   $port = Get-Port
   Say "置き場所 : $Repo"
   Say "番号     : $port"
@@ -108,7 +108,7 @@ Head "2. 隠れて動く起動役を作る"
 New-Item -ItemType Directory -Path $AppDir -Force | Out-Null
 # node をそのまま自動起動すると黒い窓が出っぱなしになる。VBS 経由で隠す。
 $vbs = @"
-' YasDrop を窓を出さずに起動する（install-windows.ps1 が作ります）
+' MrDrop を窓を出さずに起動する（install-windows.ps1 が作ります）
 Set sh = CreateObject("WScript.Shell")
 cmd = "cmd /c """"$($node.Source)"" ""$Entry"" >> ""$LogFile"" 2>&1"""
 sh.Run cmd, 0, False

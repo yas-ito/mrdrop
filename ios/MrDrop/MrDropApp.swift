@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct YasDropApp: App {
+struct MrDropApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {

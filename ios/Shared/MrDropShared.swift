@@ -2,19 +2,19 @@ import Foundation
 
 /// 本体アプリと共有拡張の両方から使う土台。
 /// 🔴 両方のターゲットに追加すること（片方だけだと共有シートから送れない）。
-enum YasDrop {
+enum MrDrop {
 
     // MARK: - Xcode 側の設定と一致させる値
 
     /// App Groups の名前。Signing & Capabilities で同じ文字列を両ターゲットに入れる。
-    static let appGroup = "group.jp.yastools.yasdrop"
+    static let appGroup = "group.jp.yastools.mrdrop"
 
     /// バックグラウンド転送の名札。本体と拡張で別にする決まり（同じにすると取り合いになる）。
-    static let sessionIDApp = "jp.yastools.yasdrop.upload.app"
-    static let sessionIDExtension = "jp.yastools.yasdrop.upload.ext"
+    static let sessionIDApp = "jp.yastools.mrdrop.upload.app"
+    static let sessionIDExtension = "jp.yastools.mrdrop.upload.ext"
 
     /// Info.plist の NSBonjourServices にも同じものを書く。書き忘れると PC が一切見つからない。
-    static let serviceType = "_yasdrop._tcp"
+    static let serviceType = "_mrdrop._tcp"
 
     // MARK: - 見つけた PC
 
@@ -52,7 +52,7 @@ enum YasDrop {
     /// 共有拡張が置いた一時ファイルの置き場（App Group の中）。
     static func stagingDirectory() throws -> URL {
         guard let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else {
-            throw NSError(domain: "YasDrop", code: 1,
+            throw NSError(domain: "MrDrop", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "App Group が設定されていません（\(appGroup)）"])
         }
         let dir = base.appendingPathComponent("staging", isDirectory: true)
@@ -71,9 +71,9 @@ enum YasDrop {
         var req = URLRequest(url: url)
         req.httpMethod = "PUT"
         req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        if !token.isEmpty { req.setValue(token, forHTTPHeaderField: "X-YasDrop-Token") }
+        if !token.isEmpty { req.setValue(token, forHTTPHeaderField: "X-MrDrop-Token") }
         if let m = modified {
-            req.setValue(String(Int64(m.timeIntervalSince1970 * 1000)), forHTTPHeaderField: "X-YasDrop-Modified")
+            req.setValue(String(Int64(m.timeIntervalSince1970 * 1000)), forHTTPHeaderField: "X-MrDrop-Modified")
         }
         req.timeoutInterval = 3600      // 大きい動画を Wi-Fi で送る。既定の60秒では足りない
         return req

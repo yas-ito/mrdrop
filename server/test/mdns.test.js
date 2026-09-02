@@ -8,7 +8,7 @@ const { TYPE, encodeName, readName, record, rdataA, rdataPtr, rdataSrv, rdataTxt
 module.exports = async function (t) {
   const { suite, eq, ok, throws } = t;
 
-  const SERVICE = "_yasdrop._tcp.local";
+  const SERVICE = "_mrdrop._tcp.local";
   const INSTANCE = "YASMA-PC." + SERVICE;
   const HOST = "YASMA-PC.local";
 
