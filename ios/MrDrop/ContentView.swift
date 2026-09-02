@@ -9,16 +9,24 @@ struct PickedFile: Transferable {
     let url: URL
     let name: String
 
+    /// 🔴 受け口を `.item` ひとつにすると、写真ピッカーからの取り込みが**必ず**
+    ///    `CoreTransferable.TransferableSupportError error 0` で失敗する
+    ///    （2026-09-02・iOS 26.5 で確認）。ピッカーが差し出す型に合わせて分けて用意する。
+    ///    並び順が優先順位。画像・動画で受け、それ以外は `.item` で拾う。
     static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(contentType: .item) { f in
-            SentTransferredFile(f.url)
-        } importing: { received in
-            let dir = try MrDrop.stagingDirectory()
-            let dest = dir.appendingPathComponent(UUID().uuidString + "-" + received.file.lastPathComponent)
-            try? FileManager.default.removeItem(at: dest)
-            try FileManager.default.copyItem(at: received.file, to: dest)
-            return PickedFile(url: dest, name: received.file.lastPathComponent)
-        }
+        FileRepresentation(importedContentType: .heic)  { try stage($0) }
+        FileRepresentation(importedContentType: .item)  { try stage($0) }
+        FileRepresentation(importedContentType: .image) { try stage($0) }
+        FileRepresentation(importedContentType: .movie) { try stage($0) }
+    }
+
+    /// 渡された場所はすぐ消えるので、App Group の中へ写しておく。
+    private static func stage(_ received: ReceivedTransferredFile) throws -> PickedFile {
+        let dir = try MrDrop.stagingDirectory()
+        let dest = dir.appendingPathComponent(UUID().uuidString + "-" + received.file.lastPathComponent)
+        try? FileManager.default.removeItem(at: dest)
+        try FileManager.default.copyItem(at: received.file, to: dest)
+        return PickedFile(url: dest, name: received.file.lastPathComponent)
     }
 }
 
@@ -73,6 +81,9 @@ struct ContentView: View {
                         Spacer()
                         if peer == p { Image(systemName: "checkmark").foregroundStyle(.tint) }
                     }
+                    // 🔴 これが無いと当たり判定が文字の上だけになり、
+                    //    行の余白を押しても選べない（実機で必ず戸惑う）
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
