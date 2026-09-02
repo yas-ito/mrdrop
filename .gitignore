@@ -1,0 +1,16 @@
+# 手元の設定（置き場所と合言葉が入るので配らない）
+config.json
+
+# install-windows.ps1 が作るもの
+scripts/*.generated.vbs
+*.log
+
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Xcode（Mac 側で作られるもの）
+ios/**/*.xcodeproj/
+ios/**/*.xcworkspace/
+ios/**/xcuserdata/
+ios/**/DerivedData/

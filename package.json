@@ -1,0 +1,13 @@
+{
+  "name": "yasdrop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "iPhone から同じ Wi-Fi の Windows へ送る（AirDrop の代わり）",
+  "main": "server/yasdrop.js",
+  "scripts": {
+    "start": "node server/yasdrop.js",
+    "browse": "node server/yasdrop.js --browse",
+    "test": "node server/test/run.js"
+  },
+  "engines": { "node": ">=18" }
+}

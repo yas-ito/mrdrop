@@ -1,0 +1,27 @@
+import SwiftUI
+
+@main
+struct YasDropApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+
+final class AppDelegate: NSObject, UIApplicationDelegate {
+
+    /// 共有拡張が始めた転送の後始末は、拡張が消えたあとに本体が引き継ぐ決まり。
+    /// 🔴 ここを実装しないと、共有シートから送った大きい動画が終わりきらないことがある。
+    private static var keepAlive: Uploader?
+
+    func application(_ application: UIApplication,
+                     handleEventsForBackgroundURLSession identifier: String,
+                     completionHandler: @escaping () -> Void) {
+        let u = Uploader(identifier: identifier)
+        u.backgroundCompletion = completionHandler
+        Self.keepAlive = u
+    }
+}

@@ -1,0 +1,14 @@
+# 🔴 cmd.exe / PowerShell に読ませるものは、改行とBOMを git に変えさせない（一撃極と同じ決まり）。
+#    .ps1 は BOM 付き UTF-8 のまま（BOM が無いと PowerShell 5.1 が CP932 として読み、日本語で全滅する）。
+#    ここで実際に踏みました。install-windows.ps1 が構文エラーで動かなくなります。
+#    .bat は CRLF（LF だと環境によって解釈が変わる）。
+#    .sh は LF（CRLF だと shebang が壊れて Mac の bash が読めない）。
+*.ps1 -text
+*.bat text eol=crlf
+*.sh text eol=lf
+
+# Swift / JS は Mac と Windows を行き来するので LF に揃える
+*.swift text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
