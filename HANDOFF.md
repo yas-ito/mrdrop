@@ -82,64 +82,65 @@ Mac にも Node があるので `node server/mrdrop.js` は Mac でも動きま�
 
 ## Mac → Windows
 
-**最終更新: 2026-09-02（Mac）／Xcode 26.6・iOS 26.5 SDK・iPhone 17 シミュレータ**
+**最終更新: 2026-09-02（Mac）／実機 iPhone 13 Pro Max・iOS 26.6.1・Xcode 26.6**
 
-# ✅ **iOS アプリ、動きました。**頼まれた4つのうち3つは済み
+# ✅ **iOS アプリ、実機で動いています。**2.81 GB の動画が 35 秒で届きました
 
-| そちらの確認事項 | 結果 |
+そちらの4つの確認は、**最後の1つを残して全部済み**です。
+
+| 確認事項 | 結果 |
 |---|---|
-| 1. ビルドが通るか | ✅ 通した（**2件落ちたので直した**） |
-| 2. `NWBrowser` で PC が出るか | ✅ 出る。**そちらの Windows 機（`yas` 192.168.10.105）も一覧に出た** |
-| 3. 1GB 級の動画で拡張が落ちないか | 🔲 **実機が要る**。シミュレータはメモリ上限が効かないので意味のある確認にならない |
-| 4. HEIC が HEIC のまま届くか | 🔴 **化けていた。直した**（下記） |
+| 1. ビルドが通るか | ✅ 通した（2件落ちたので直した） |
+| 2. `NWBrowser` で PC が出るか | ✅ 出る。**そちらの Windows 機も一覧に出た** |
+| 3. 1GB 級の動画で拡張が落ちないか | 🔲 **アプリ経由は 2.81GB 成功。共有シート経由が未確認**（下記） |
+| 4. HEIC が HEIC のまま届くか | ✅ 直した。SHA-256 まで一致 |
 
-**アプリからも共有シートからも、実際に Mac の受信箱へ届いています**（サーバーは Mac 側で起動）。
+# 🆕 速さの実測（**AirDrop 並みでした**）
 
-# 🔴 直した5件（`ios/` のみ・Windows 側は無傷）
+25分の動画 **2,808,340,601 バイト**を、iPhone(Wi-Fi) → ルータ → Mac(有線1Gbps) で:
 
-**1. コンパイルが通らない** — `Uploader.update` の引数に `@escaping` が無い
+| 送り方 | 時間 | 速さ |
+|---|---:|---:|
+| バックグラウンド転送 | 47 秒 | 59.7 MB/秒 |
+| **前面の通常セッション**（`whileWatching: true`） | **35 秒** | **80.2 MB/秒** |
 
-**2. インストール自体を拒まれる** — 共有拡張の `Info.plist` に `CFBundleDisplayName` が要る
-（`does not have a CFBundleDisplayName key`）。自前の plist を渡すと `INFOPLIST_KEY_*` は効かない
+🔵 **`URLSessionConfiguration.background` は OS が速度を抑えます。**アプリを開いている間は
+通常のセッションに切り替えると 1.34 倍。**共有拡張は必ず background のまま**にしてあります
+（アプリが消えても送り続ける必要があるため）。Windows 側のブラウザ画面も、大きい動画を
+送るなら同じ話が効くかもしれません。
 
-**3. 🔴 HEIC が JPEG に化ける（両方の経路で）**
+# 🆕 iOS で直した8件（`ios/` のみ・Windows 側は無傷）
 
-- 共有拡張は `loadFileRepresentation(forTypeIdentifier: UTType.item.identifier)`
-  → **`public.item` で頼むと写真は JPEG に変換されて渡されます**（53KB の HEIC が 156KB の JPEG に）
-- 本体アプリの `Transferable` も同じ。`.item` ひとつだと、そもそも取り込みが
-  `TransferableSupportError error 0` で失敗する
-- **直し方**: 提供されている型のうち**実体の型**（`public.heic` → `public.png` →
-  `com.apple.quicktime-movie` → …）を先に選ぶ。並び順が優先順位
-- **確認**: アプリ経由・共有シート経由の両方で、届いた HEIC が元ファイルと
-  **SHA-256 まで一致**（`f3f80843…`）
+前便の5件（`@escaping`／拡張の `CFBundleDisplayName`／HEIC が JPEG に化ける／IPv6 で
+URL が壊れる／行の余白が押せない）に加えて:
 
-**4. IPv6 だと URL が壊れて黙って送れない**（前便の件・IPv4 優先＋角括弧）
+**6. 選んでから数分間、画面に何も出ない** — `loadTransferable` は iOS が書き出し終えるまで
+返ってこない。2.8GB なら数分。**選んだ直後に「取り込んでいます」の行を出す**ようにした。
+これが無いと、そちらが踏んだ「送れているのに伝わらず4回送る」が iOS でも起きる
 
-**5. PC の行が「文字の上」しか押せない** — `contentShape(Rectangle())` が無いと、
-行の余白を押しても選べません。実機で必ず戸惑います
+**7. 数GB を二重に持っていた** — App Group への複製を**ハードリンク**に（同じディスクなので一瞬）
 
-# 🆕 Xcode プロジェクトは `ios/project.yml` から生成します
+**8. 端末の中に記録を残すようにした** — 画面の赤い字は「unknown error」としか出ないため。
+`MrDrop.log` が App Group と Documents の両方に書き、Mac から吸い出す:
 
-`README.md` の手作業5ステップは **`xcodegen generate` 一発**に置き換えました。
-App Groups・`Info.plist` の鍵・ターゲット構成の出どころは `project.yml` の1か所だけです。
-**Xcode の画面で設定をいじらないでください**（生成し直すと消えます）。
+```
+xcrun devicectl device copy from --device <UDID> \
+  --domain-type appDataContainer --domain-identifier jp.yastools.mrdrop \
+  --source Documents/mrdrop.log --destination ./mrdrop.log
+```
 
-🔴 **シミュレータで試すときの罠**: Team を選んでいないと、Xcode は
-**App Groups の権限を署名から黙って落とします**。すると拡張も本体も一時置き場を作れず、
-「写真を選んだ瞬間に失敗」になります。手で `codesign -f -s -` し直す手順を
-[`ios/README.md`](ios/README.md) の 0 節に書きました。**実機（Team あり）では起きません。**
+🔴 **App Group の中身は `devicectl` から見えません**（`appGroupDataContainer` に mrdrop.log も
+staging も出てこないのに、アプリからは読み書きできている）。**取り出しは Documents 経由で。**
 
-# 🔲 そちらへのお願い: **サーバーの既定値が Windows 専用です**
+# 🔲 残り1つ: **共有シートで 2.8GB**
 
-`server/lib/config.js` の `DEFAULTS.inbox` が `%USERPROFILE%\\Desktop\\受信箱`。
-**Mac では展開されず**、`%USERPROFILE%\Desktop\受信箱` という名前のフォルダを
-カレントに作ってしまいます（今回は `--config` で逃げました）。
-`README` に「Mac でも動く」と書くなら、`os.homedir()` へ落とす分岐が要ります。
-**そちらの領分なので触っていません。**要らないなら「Windows 専用」と書き足すだけでも構いません。
+写真 ▸ 共有 ▸ Mr.Drop で巨大な動画を送ったとき、**120MB しかない拡張が落ちないか**。
+明日やります。落ちれば無言で閉じて何も届かないので、端末の記録で判定します。
 
-# 🔲 残り（実機が要る）
+# 🔲 そちらへのお願い（前便から据え置き）
 
-1GB 級の動画・共有拡張のメモリ・実機の Wi-Fi 経路。**本人が iPhone を繋いだら続けます。**
+`server/lib/config.js` の既定の受信箱 `%USERPROFILE%\\Desktop\\受信箱` は **Mac で展開されません**。
+Mac でも動くと謳うなら分岐が要ります（そちらの領分なので触っていません）。
 
 ---
 
