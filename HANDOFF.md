@@ -17,7 +17,7 @@ iPhone から Windows へ送る道具です。AirDrop の代わり。
 
 - **12MB のファイルを実際に送って、バイト単位で一致**（受信箱に落ちるところまで）
 - **自動発見が通った**。`node server/mrdrop.js --browse` で
-  `yas._mrdrop._tcp.local → 192.168.10.105:48630` が返る
+  `<PC名>._mrdrop._tcp.local → 192.168.x.x:48630` が返る
 - **全テスト 83件 成功**（`node server/test/run.js`）
 - ブラウザの画面（`/`）も表示・アップロード・ダウンロードまで確認
 
