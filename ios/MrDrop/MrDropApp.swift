@@ -7,6 +7,10 @@ struct MrDropApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    MrDrop.log("アプリ", "起動")
+                    MrDrop.exportLog()      // Mac から取り出せる場所へ写す
+                }
         }
     }
 }

@@ -18,7 +18,14 @@ final class Uploader: NSObject, ObservableObject {
 
     @Published private(set) var jobs: [Job] = []
 
+    /// 速さを出すための開始時刻（taskIdentifier ごと）
+    private var started: [Int: Date] = [:]
+
     private var session: URLSession!
+    /// 🔴 画面を開いている間だけ使う、普通のセッション。
+    ///    バックグラウンド用は OS が速度を抑えるので、前面にいる間はこちらのほうが速い。
+    ///    ただしアプリを閉じると止まるので、共有拡張は使わない（あちらは必ず background）。
+    private var live: URLSession!
     /// 本体アプリが再起動されたときにシステムから渡される後始末の合図
     var backgroundCompletion: (() -> Void)?
 
@@ -31,6 +38,13 @@ final class Uploader: NSObject, ObservableObject {
         c.allowsCellularAccess = false                   // LAN 専用。モバイル通信では意味がない
         c.waitsForConnectivity = true
         session = URLSession(configuration: c, delegate: self, delegateQueue: nil)
+
+        let f = URLSessionConfiguration.default
+        f.allowsCellularAccess = false          // LAN 専用
+        f.waitsForConnectivity = true
+        f.timeoutIntervalForRequest = 3600
+        f.timeoutIntervalForResource = 24 * 3600
+        live = URLSession(configuration: f, delegate: self, delegateQueue: nil)
     }
 
     // MARK: 取り込み中の表示
@@ -64,11 +78,15 @@ final class Uploader: NSObject, ObservableObject {
 
     /// - Parameter fileURL: App Group の中に置いた実体。送り終えたら消える。
     @discardableResult
-    func send(fileURL: URL, filename: String, to peer: MrDrop.Peer, modified: Date?) -> Bool {
+    /// - Parameter whileWatching: 画面を開いたまま送るなら true（速い普通のセッションを使う）。
+    ///   共有拡張からは必ず false。アプリが消えても続くように background のままにする。
+    func send(fileURL: URL, filename: String, to peer: MrDrop.Peer, modified: Date?,
+              whileWatching: Bool = false) -> Bool {
         guard let req = MrDrop.uploadRequest(to: peer, filename: filename, modified: modified) else { return false }
-        let task = session.uploadTask(with: req, fromFile: fileURL)
+        let task = (whileWatching ? live! : session!).uploadTask(with: req, fromFile: fileURL)
         task.taskDescription = fileURL.path              // 済んだら消すために覚えておく
         let size = (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int64) ?? nil
+        MrDrop.log("転送", "開始 \(filename) \(size ?? -1) バイト → \(peer.host):\(peer.port) 経路=\(whileWatching ? "前面" : "背面")")
         let job = Job(id: task.taskIdentifier, filename: filename, total: size ?? 0)
         DispatchQueue.main.async { self.jobs.insert(job, at: 0) }
         task.resume()
@@ -100,6 +118,15 @@ extension Uploader: URLSessionDataDelegate {
             try? FileManager.default.removeItem(atPath: path)   // 一時ファイルを溜めない
         }
         let status = (task.response as? HTTPURLResponse)?.statusCode ?? 0
+        let name = task.originalRequest?.url?.lastPathComponent ?? "?"
+        if let e = error {
+            MrDrop.log("転送", "🔴 失敗 \(name) \(MrDrop.describe(e))")
+        } else {
+            let secs = -(started[task.taskIdentifier]?.timeIntervalSinceNow ?? 0)
+            let mbps = secs > 0.2 ? String(format: "%.1f MB/秒", Double(task.countOfBytesSent) / secs / 1_048_576) : "—"
+            MrDrop.log("転送", "終了 \(name) HTTP \(status) \(task.countOfBytesSent) バイト \(String(format: "%.1f", secs))秒 \(mbps)")
+        }
+        started[task.taskIdentifier] = nil
         update(task.taskIdentifier) { j in
             j.finished = true
             if let e = error {

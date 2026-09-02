@@ -60,6 +60,67 @@ enum MrDrop {
         return dir
     }
 
+    // MARK: - 端末の中の記録
+    //
+    // 画面の赤い字だけでは「unknown error」しか分からないので、本体と拡張の両方から
+    // App Group の中の1本のファイルに書き足す。Mac からはこれで読み出す:
+    //   xcrun devicectl device copy from --device <UDID> \
+    //     --domain-type appGroupDataContainer --domain-identifier group.jp.yastools.mrdrop \
+    //     --source mrdrop.log --destination .
+
+    static func log(_ who: String, _ text: String) {
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        guard let d = "\(stamp) [\(who)] \(text)\n".data(using: .utf8) else { return }
+
+        // 🔴 App Group の中身は devicectl から見えないことがある（実測）ので、
+        //    自分の Documents にも同じものを書く。取り出せるのはこちら。
+        var targets: [URL] = []
+        if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            targets.append(docs.appendingPathComponent("mrdrop.log"))
+        }
+        if let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) {
+            targets.append(base.appendingPathComponent("mrdrop.log"))
+        }
+        for f in targets {
+            if let h = try? FileHandle(forWritingTo: f) {
+                _ = try? h.seekToEnd()
+                try? h.write(contentsOf: d)
+                try? h.close()
+            } else {
+                try? d.write(to: f)
+            }
+        }
+    }
+
+    /// 記録を、アプリ自身の Documents にも写す。
+    /// 🔴 App Group の中身は `devicectl` から見えないことがある（実測）。Documents なら確実に取り出せる:
+    ///   xcrun devicectl device copy from --device <UDID> \
+    ///     --domain-type appDataContainer --domain-identifier jp.yastools.mrdrop \
+    ///     --source Documents/mrdrop.log --destination .
+    static func exportLog() {
+        guard let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup),
+              let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        else { return }
+        // 共有拡張が書いた分を、取り出せる場所へ足す
+        let from = base.appendingPathComponent("mrdrop.log")
+        let to = docs.appendingPathComponent("拡張の記録.log")
+        try? FileManager.default.removeItem(at: to)
+        try? FileManager.default.copyItem(at: from, to: to)
+    }
+
+    /// 🔴 `localizedDescription` は「unknown error」としか言わないことが多い。
+    ///    領域・番号・内側のエラーまで出さないと原因にたどり着けない。
+    static func describe(_ error: Error) -> String {
+        let e = error as NSError
+        var s = "\(e.domain) code=\(e.code) 「\(e.localizedDescription)」"
+        if let u = e.userInfo[NSUnderlyingErrorKey] as? NSError {
+            s += " ← 内側: \(u.domain) code=\(u.code) 「\(u.localizedDescription)」"
+        }
+        let keys = e.userInfo.keys.filter { $0 != NSUnderlyingErrorKey }
+        if !keys.isEmpty { s += " userInfo=[\(keys.joined(separator: ", "))]" }
+        return s
+    }
+
     // MARK: - 送るための組み立て
 
     static func uploadRequest(to peer: Peer, filename: String, modified: Date?) -> URLRequest? {

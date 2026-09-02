@@ -62,8 +62,10 @@ final class ShareViewController: UIViewController {
 
         let items = (extensionContext?.inputItems as? [NSExtensionItem]) ?? []
         var count = 0
+        MrDrop.log("拡張", "起動 項目数=\(items.count) 送り先=\(peer.name)")
         for item in items {
             for provider in item.attachments ?? [] {
+                MrDrop.log("拡張", "受け取れる型=\(provider.registeredTypeIdentifiers.joined(separator: ","))")
                 guard let picked = await copyToStaging(provider) else { continue }
                 if uploader.send(fileURL: picked.file, filename: picked.name, to: peer, modified: nil) {
                     count += 1
@@ -98,7 +100,10 @@ final class ShareViewController: UIViewController {
     private func copyToStaging(_ provider: NSItemProvider) async -> (file: URL, name: String)? {
         await withCheckedContinuation { cont in
             provider.loadFileRepresentation(forTypeIdentifier: originalType(of: provider)) { url, _ in
-                guard let url else { cont.resume(returning: nil); return }
+                guard let url else {
+                    MrDrop.log("拡張", "🔴 取り込み: iOS が渡してくれなかった")
+                    cont.resume(returning: nil); return
+                }
                 do {
                     let dir = try MrDrop.stagingDirectory()
                     let dest = dir.appendingPathComponent(UUID().uuidString + "-" + url.lastPathComponent)
@@ -110,6 +115,7 @@ final class ShareViewController: UIViewController {
                     }
                     cont.resume(returning: (dest, url.lastPathComponent))
                 } catch {
+                    MrDrop.log("拡張", "🔴 取り込み失敗 \(MrDrop.describe(error))")
                     cont.resume(returning: nil)
                 }
             }

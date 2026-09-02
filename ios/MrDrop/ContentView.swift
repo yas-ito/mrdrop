@@ -34,6 +34,7 @@ struct PickedFile: Transferable {
         do {
             try FileManager.default.linkItem(at: received.file, to: dest)
         } catch {
+            MrDrop.log("アプリ", "ハードリンク不可（コピーに落ちます）: \(MrDrop.describe(error))")
             try FileManager.default.copyItem(at: received.file, to: dest)
         }
         return PickedFile(url: dest, name: received.file.lastPathComponent)
@@ -177,15 +178,21 @@ struct ContentView: View {
                 //    1時間の動画なら数分、iCloud にしか無ければダウンロードから始まる。
                 //    先に行を出しておかないと「押したのに無反応」に見える。
                 let ticket = uploader.beginStaging("取り込んでいます…")
+                MrDrop.log("アプリ", "取り込み開始 types=\(item.supportedContentTypes.map(\.identifier).joined(separator: ","))")
                 do {
                     if let f = try await item.loadTransferable(type: PickedFile.self) {
                         uploader.endStaging(ticket)
-                        uploader.send(fileURL: f.url, filename: f.name, to: p, modified: nil)
+                        let size = (try? FileManager.default.attributesOfItem(atPath: f.url.path)[.size] as? Int64) ?? nil
+                        MrDrop.log("アプリ", "取り込み成功 \(f.name) \(size ?? -1) バイト")
+                        uploader.send(fileURL: f.url, filename: f.name, to: p, modified: nil, whileWatching: true)
                     } else {
+                        MrDrop.log("アプリ", "🔴 取り込み: iOS が nil を返した")
                         uploader.failStaging(ticket, "iOS がこの項目を渡してくれませんでした")
                     }
                 } catch {
-                    uploader.failStaging(ticket, error.localizedDescription)
+                    let detail = MrDrop.describe(error)
+                    MrDrop.log("アプリ", "🔴 取り込み失敗 \(detail)")
+                    uploader.failStaging(ticket, detail)
                 }
             }
             photoItems = []
@@ -202,7 +209,7 @@ struct ContentView: View {
                 let dir = try MrDrop.stagingDirectory()
                 let dest = dir.appendingPathComponent(UUID().uuidString + "-" + u.lastPathComponent)
                 try FileManager.default.copyItem(at: u, to: dest)
-                uploader.send(fileURL: dest, filename: u.lastPathComponent, to: p, modified: nil)
+                uploader.send(fileURL: dest, filename: u.lastPathComponent, to: p, modified: nil, whileWatching: true)
             } catch {
                 message = error.localizedDescription
             }
