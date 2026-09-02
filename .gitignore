@@ -9,7 +9,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Xcode（Mac 側で作られるもの）
+# Xcode（すべて ios/project.yml から `xcodegen generate` で作られる。手で直さない）
+ios/MrDrop/Info.plist
+ios/MrDrop/MrDrop.entitlements
+ios/ShareExtension/Info.plist
+ios/ShareExtension/ShareExtension.entitlements
 ios/**/*.xcodeproj/
 ios/**/*.xcworkspace/
 ios/**/xcuserdata/

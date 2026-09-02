@@ -44,7 +44,8 @@ final class Uploader: NSObject, ObservableObject {
         return true
     }
 
-    private func update(_ id: Int, _ change: (inout Job) -> Void) {
+    // DispatchQueue.main.async の中で使うので @escaping が要る
+    private func update(_ id: Int, _ change: @escaping (inout Job) -> Void) {
         DispatchQueue.main.async {
             guard let i = self.jobs.firstIndex(where: { $0.id == id }) else { return }
             change(&self.jobs[i])

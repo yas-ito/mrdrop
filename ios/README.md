@@ -7,7 +7,40 @@ Mac 側で下の手順どおりに作れば、そのまま乗るはずです（�
 
 ---
 
-## 1. プロジェクトを作る
+## 0. いちばん速い作り方（**Xcode の画面を触らない**・2026-09-02 に Mac で確立）
+
+**`project.yml` が設計図です。**下の 1〜5 の手作業は、これ1つに置き換わりました。
+
+```bash
+brew install xcodegen
+cd ios && xcodegen generate && open MrDrop.xcodeproj
+```
+
+ターゲット構成・App Groups・`Info.plist` の鍵・どのファイルをどちらのターゲットに入れるかは、
+**全部 `project.yml` に書いてあります**。
+
+🔴 **Xcode の画面で設定をいじらないでください。**`xcodegen generate` で消えます。直すのは `project.yml`。
+🔴 `Info.plist` と `.entitlements` は**生成物**です（git は追いません）。
+
+実機に入れるときだけ、Xcode の **Signing & Capabilities で自分の Team を選びます**（両ターゲット）。
+シミュレータで動かすだけなら署名は要りません:
+
+```bash
+xcodebuild -project MrDrop.xcodeproj -scheme MrDrop -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+### ビルドで実際に踏んだ罠（2件・直済み）
+
+- **`escaping closure captures non-escaping parameter 'change'`**（`Uploader.update`）
+  → `@escaping` を付けた。`DispatchQueue.main.async` の中で使うため
+- **インストールが `does not have a CFBundleDisplayName key` で失敗**
+  → **共有拡張の `Info.plist` にも `CFBundleDisplayName` が要る**。
+  自前の `Info.plist` を渡すときは `INFOPLIST_KEY_*` のビルド設定は効かないので、plist に直接書く
+
+---
+
+## 1. プロジェクトを作る（Xcode の画面から手で作る場合。0 をやったなら不要）
 
 Xcode → **File ▸ New ▸ Project ▸ iOS ▸ App**
 

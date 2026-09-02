@@ -1,0 +1,89 @@
+# Xcode プロジェクトの設計図。ここを直して `xcodegen generate` で作り直す。
+#
+# 🔴 手で Xcode の画面をいじらないこと。作り直すと消える。
+#    App Groups・Info.plist の鍵・どのファイルをどちらのターゲットに入れるかは、全部ここにある。
+
+name: MrDrop
+options:
+  bundleIdPrefix: jp.yastools
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    # 署名は Xcode に任せる。実機に入れるときだけ本人の Team を選ぶ
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+
+targets:
+
+  MrDrop:
+    type: application
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: MrDrop
+    dependencies:
+      - target: ShareExtension
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: jp.yastools.mrdrop
+    entitlements:
+      path: MrDrop/MrDrop.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.jp.yastools.mrdrop
+    info:
+      path: MrDrop/Info.plist
+      properties:
+        CFBundleDisplayName: Mr.Drop        # ホーム画面と共有シートに出る名前（点あり）
+        UILaunchScreen: {}                  # 無いと画面が全面に広がらない
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # 🔴 NSBonjourServices を書き忘れると、権限ダイアログすら出ずに「1台も見つからない」だけになる
+        NSBonjourServices:
+          - _mrdrop._tcp
+        NSLocalNetworkUsageDescription: 同じ Wi-Fi にあるパソコンを探して、写真や動画を送るために使います。
+        # 平文 HTTP の LAN 宛。これが無いと接続そのものが弾かれる
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSPhotoLibraryUsageDescription: 送る写真や動画を選ぶために使います。
+
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      # 🔴 土台と転送は本体と共有する。片方だけだと共有シートから送ったときにだけ落ちる
+      - path: Shared
+      - path: MrDrop/Uploader.swift
+      - path: ShareExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: jp.yastools.mrdrop.ShareExtension
+    entitlements:
+      path: ShareExtension/ShareExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.jp.yastools.mrdrop
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        # 🔴 これが空だと iOS が拡張ごとインストールを拒む（"does not have a CFBundleDisplayName"）
+        CFBundleDisplayName: Mr.Drop
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: ShareExtension.ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 100
+              NSExtensionActivationSupportsMovieWithMaxCount: 20
+              NSExtensionActivationSupportsFileWithMaxCount: 20
