@@ -30,6 +30,20 @@ xcodebuild -project MrDrop.xcodeproj -scheme MrDrop -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
+### 🔴 シミュレータで App Groups を試すときは、**手で署名し直す**
+
+**Team を選んでいないと、Xcode は App Groups の権限を署名から黙って落とします**
+（`codesign -d --entitlements :- MrDrop.app` が空の `<dict/>` になる）。
+すると `containerURL(forSecurityApplicationGroupIdentifier:)` が nil を返し、
+**写真を選んだ瞬間に取り込みが失敗**します。実機（Team あり）では起きません。
+
+```bash
+A=<DerivedData>/Build/Products/Debug-iphonesimulator/MrDrop.app
+codesign -f -s - --entitlements ShareExtension/ShareExtension.entitlements "$A/PlugIns/ShareExtension.appex"
+codesign -f -s - --entitlements MrDrop/MrDrop.entitlements "$A"
+xcrun simctl install <UDID> "$A"
+```
+
 ### ビルドで実際に踏んだ罠（2件・直済み）
 
 - **`escaping closure captures non-escaping parameter 'change'`**（`Uploader.update`）

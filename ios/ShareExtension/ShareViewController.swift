@@ -74,11 +74,30 @@ final class ShareViewController: UIViewController {
         finish(count > 0 ? "\(peer.name) へ送っています（\(count)件）" : "送れるものがありませんでした。")
     }
 
+    /// 🔴 `public.item` で頼むと、写真は **JPEG に変換されて**渡される（2026-09-02 実測）。
+    ///    元のまま送るために、提供されている型のうち「実体の型」を先に選ぶ。
+    private func originalType(of provider: NSItemProvider) -> String {
+        let preferred = [
+            UTType.heic.identifier,          // iPhone の写真はたいていこれ
+            "public.heif",
+            UTType.rawImage.identifier,
+            UTType.quickTimeMovie.identifier, // iPhone の動画（.MOV）
+            UTType.mpeg4Movie.identifier,
+            UTType.png.identifier,            // スクリーンショット
+            UTType.jpeg.identifier,
+            UTType.movie.identifier,
+            UTType.image.identifier,
+        ]
+        let has = provider.registeredTypeIdentifiers
+        for t in preferred where has.contains(t) { return t }
+        return has.first ?? UTType.item.identifier
+    }
+
     /// 🔴 loadFileRepresentation が渡してくる URL は、このクロージャの中でだけ有効。
     ///    必ずこの場でコピーしきること。あとで開こうとしても消えている。
     private func copyToStaging(_ provider: NSItemProvider) async -> (file: URL, name: String)? {
         await withCheckedContinuation { cont in
-            provider.loadFileRepresentation(forTypeIdentifier: UTType.item.identifier) { url, _ in
+            provider.loadFileRepresentation(forTypeIdentifier: originalType(of: provider)) { url, _ in
                 guard let url else { cont.resume(returning: nil); return }
                 do {
                     let dir = try MrDrop.stagingDirectory()

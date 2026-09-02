@@ -14,10 +14,14 @@ struct PickedFile: Transferable {
     ///    （2026-09-02・iOS 26.5 で確認）。ピッカーが差し出す型に合わせて分けて用意する。
     ///    並び順が優先順位。画像・動画で受け、それ以外は `.item` で拾う。
     static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(importedContentType: .heic)  { try stage($0) }
-        FileRepresentation(importedContentType: .item)  { try stage($0) }
-        FileRepresentation(importedContentType: .image) { try stage($0) }
-        FileRepresentation(importedContentType: .movie) { try stage($0) }
+        FileRepresentation(importedContentType: .heic)          { try stage($0) }
+        FileRepresentation(importedContentType: .png)           { try stage($0) }
+        FileRepresentation(importedContentType: .quickTimeMovie){ try stage($0) }
+        FileRepresentation(importedContentType: .mpeg4Movie)    { try stage($0) }
+        FileRepresentation(importedContentType: .jpeg)          { try stage($0) }
+        FileRepresentation(importedContentType: .movie)         { try stage($0) }
+        FileRepresentation(importedContentType: .image)         { try stage($0) }
+        FileRepresentation(importedContentType: .item)          { try stage($0) }
     }
 
     /// 渡された場所はすぐ消えるので、App Group の中へ写しておく。
