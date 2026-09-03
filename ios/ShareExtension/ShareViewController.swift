@@ -56,7 +56,7 @@ final class ShareViewController: UIViewController {
 
     private func process() async {
         guard let peer = MrDrop.lastPeer else {
-            finish("先に MrDrop アプリを一度開いて、送り先の PC を選んでください。")
+            finish("先に Mr.Drop アプリを一度開いて、送り先の PC を選んでください。")
             return
         }
 

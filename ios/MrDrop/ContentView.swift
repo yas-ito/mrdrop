@@ -97,7 +97,7 @@ struct ContentView: View {
                 sendSection
                 formatSection
             }
-            .navigationTitle("MrDrop")
+            .navigationTitle("Mr.Drop")
             .onAppear { discovery.start() }
             .onDisappear { discovery.stop() }
             .alert("お知らせ", isPresented: .constant(message != nil)) {
@@ -139,7 +139,7 @@ struct ContentView: View {
         } header: {
             Text("送り先の PC")
         } footer: {
-            Text("見つからないときは、PC で MrDrop が動いているか、同じ Wi-Fi につながっているかを確かめてください。")
+            Text("見つからないときは、PC で Mr.Drop が動いているか、同じ Wi-Fi につながっているかを確かめてください。")
         }
     }
 

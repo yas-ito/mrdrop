@@ -44,9 +44,14 @@ enum MrDrop {
     }
 
     /// 「PC で扱いやすい形式にして送る」。写真は JPEG、動画は MP4（容器の詰め替えのみ・無劣化）。
-    /// 既定は **切**（元のまま送る）。
+    /// 既定は **入**（本人の用途が Windows と YouTube のため）。
+    /// 🔴 `bool(forKey:)` は未設定でも false を返すので、既定を入にするには
+    ///    「まだ一度も触っていないか」を object(forKey:) で見る必要がある。
     static var convertForPC: Bool {
-        get { defaults?.bool(forKey: "convertForPC") ?? false }
+        get {
+            guard let d = defaults else { return true }
+            return d.object(forKey: "convertForPC") == nil ? true : d.bool(forKey: "convertForPC")
+        }
         set { defaults?.set(newValue, forKey: "convertForPC") }
     }
 
