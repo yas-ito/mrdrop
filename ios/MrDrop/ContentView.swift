@@ -179,8 +179,14 @@ struct ContentView: View {
                 //    先に行を出しておかないと「押したのに無反応」に見える。
                 let ticket = uploader.beginStaging("取り込んでいます…")
                 MrDrop.log("アプリ", "取り込み開始 types=\(item.supportedContentTypes.map(\.identifier).joined(separator: ","))")
+                // 🔴 進み具合が要るので、await 版ではなく Progress を返す版を使う。
+                //    iCloud にしか無い動画は、ここがダウンロードの％になる。
+                let outcome: Result<PickedFile?, Error> = await withCheckedContinuation { cont in
+                    let progress = item.loadTransferable(type: PickedFile.self) { cont.resume(returning: $0) }
+                    Task { @MainActor in uploader.track(progress, for: ticket) }
+                }
                 do {
-                    if let f = try await item.loadTransferable(type: PickedFile.self) {
+                    if let f = try outcome.get() {
                         uploader.endStaging(ticket)
                         let size = (try? FileManager.default.attributesOfItem(atPath: f.url.path)[.size] as? Int64) ?? nil
                         MrDrop.log("アプリ", "取り込み成功 \(f.name) \(size ?? -1) バイト")

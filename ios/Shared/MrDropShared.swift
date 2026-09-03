@@ -92,6 +92,26 @@ enum MrDrop {
         }
     }
 
+    /// 置き去りになった一時ファイルを片付ける。
+    /// 🔴 取り込みを途中で止める（アプリを閉じる）と、App Group の中に数GBが残る。
+    ///    溜まると端末の空きを食い、iCloud からのダウンロードすら止まる。
+    static func sweepStaging(olderThan seconds: TimeInterval = 3600) {
+        guard let dir = try? stagingDirectory(),
+              let names = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+        var freed: Int64 = 0
+        var count = 0
+        for n in names {
+            let f = dir.appendingPathComponent(n)
+            guard let a = try? FileManager.default.attributesOfItem(atPath: f.path),
+                  let m = a[.modificationDate] as? Date, -m.timeIntervalSinceNow > seconds else { continue }
+            freed += (a[.size] as? Int64) ?? 0
+            try? FileManager.default.removeItem(at: f)
+            count += 1
+        }
+        if count > 0 { log("掃除", "置き去りの一時ファイル \(count) 個・\(freed / 1_048_576) MB を消しました") }
+        else { log("掃除", "置き去りはありません（\(names.count) 個が処理中）") }
+    }
+
     /// 記録を、アプリ自身の Documents にも写す。
     /// 🔴 App Group の中身は `devicectl` から見えないことがある（実測）。Documents なら確実に取り出せる:
     ///   xcrun devicectl device copy from --device <UDID> \

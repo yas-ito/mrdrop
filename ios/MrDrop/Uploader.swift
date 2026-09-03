@@ -64,11 +64,29 @@ final class Uploader: NSObject, ObservableObject {
         return id
     }
 
+    /// 取り込みの進み具合を見張る。iCloud にしか無い動画は、ここが
+    /// ダウンロードの％になる（0% のまま動かないなら、まさにそれ）。
+    private var watches: [Int: NSKeyValueObservation] = [:]
+
+    func track(_ progress: Progress, for ticket: Int) {
+        watches[ticket] = progress.observe(\.fractionCompleted, options: [.initial, .new]) { [weak self] p, _ in
+            let pct = Int(p.fractionCompleted * 100)
+            self?.update(ticket) { j in j.filename = "取り込んでいます… \(pct)%" }
+        }
+    }
+
+    private func stopWatching(_ id: Int) {
+        watches[id]?.invalidate()
+        watches[id] = nil
+    }
+
     func endStaging(_ id: Int) {
+        stopWatching(id)
         DispatchQueue.main.async { self.jobs.removeAll { $0.id == id } }
     }
 
     func failStaging(_ id: Int, _ message: String) {
+        stopWatching(id)
         update(id) { j in
             j.staging = false
             j.finished = true

@@ -9,6 +9,7 @@ struct MrDropApp: App {
             ContentView()
                 .onAppear {
                     MrDrop.log("アプリ", "起動")
+                    MrDrop.sweepStaging()
                     MrDrop.exportLog()      // Mac から取り出せる場所へ写す
                 }
         }
