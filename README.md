@@ -37,6 +37,9 @@ node server/mrdrop.js
 Mac では受信箱が **`~/Downloads/受信箱`** になります
 （`~/Desktop` は iCloud 同期の対象で、数GB の動画が勝手に上がってしまうため）。
 
+**Mac に配るのは `Mr.Drop.app`（メニューバー常駐）です。**Node を同梱しているので、
+受け取った人はダブルクリックするだけ。作り方は下の「ほかの人に渡す」。
+
 ### 2. iPhone の Safari で開く
 
 `http://<PC名>.local:48630` を開いて、写真を選ぶだけです。
@@ -57,7 +60,8 @@ Mac では受信箱が **`~/Downloads/受信箱`** になります
 .\scripts\install-windows.ps1 -Uninstall   # 元に戻す
 ```
 
-Mac は `launchd` に登録します（ログイン時に立ち上がります）。
+Mac は `launchd` に登録します（ログイン時に立ち上がります）。**これは開発者向け**で、
+配布する `Mr.Drop.app` はメニューの「ログイン時に起動」で同じことができます。
 
 ```bash
 bash scripts/install-mac.sh              # 入れる
@@ -122,6 +126,26 @@ node build/make-package.js
 node build/make-package.js --with-node "C:\Program Files\nodejs\node.exe"
 ```
 
+### Mac 用（`build/make-mac-app.sh`・Mac でしか作れません）
+
+```bash
+bash build/make-mac-app.sh                # 作る → 署名 → 公証 → zip（数分）
+bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだけ（配ってはいけない）
+```
+
+`_build/MrDrop_v<版>_mac.zip`（約 80MB）ができます。中身は **`Mr.Drop.app` 1つ**。
+受け取った人は展開してダブルクリックするだけ。メニューバーの雫が Mr.Drop です。
+
+- **Node は同梱しています**（nodejs.org の公式バイナリ・arm64 と Intel の universal）。
+  受け取る人の Mac には何も要りません。🔴 Homebrew の node は持ち出せません（他の Mac で動かない）
+- Developer ID で署名して Apple の公証を通します。通さないと「開発元を確認できない」で開けません
+- 受信箱は `~/Downloads/受信箱`。メニューの「受信箱を変える…」で Premiere の素材フォルダにできます
+- 設定は `~/Library/Application Support/Mr.Drop/config.json`、記録は `~/Library/Logs/MrDrop/mrdrop.log`
+  （メニューの「記録を開く」で開きます。問い合わせのときはこれを送ってもらう）
+- アプリを強制終了しても受信サーバーは残りません（`--follow-stdin`。`test/follow.test.js` で固定）
+- 🔴 `make-package.js` に `--target mac` は作りません。`.app` は実行権限と署名を保ったまま
+  zip にする必要があり、自前の zip では壊れるためです（`ditto` で作ります）
+
 ## iPhone アプリ
 
 `ios/` にソースがあります。**Xcode が要るので Mac で作ります。**
@@ -141,6 +165,8 @@ node build/make-package.js --with-node "C:\Program Files\nodejs\node.exe"
 | アプリが PC を見つけない | `node server/mrdrop.js --browse` で PC 自身が見つけられるか確かめる。<br>見つかるならアプリ側（`Info.plist` の `NSBonjourServices`）を疑う |
 | 大きい動画が途中で止まる | 半端なファイルは受信箱に出さない作りです。もう一度送ってください |
 | 自動起動しているか分からない | `.\scripts\install-windows.ps1 -Status` |
+| Mac で「開発元を確認できない」と出る | 公証していない版。`make-mac-app.sh` を `--no-notarize` なしで作り直す |
+| Mac で「ローカルネットワーク」の許可を聞かれた | 「許可」を押す。断ると iPhone から見つからなくなる（設定 › プライバシーとセキュリティ › ローカルネットワーク で直せる） |
 
 ## 作りの確かめ方
 

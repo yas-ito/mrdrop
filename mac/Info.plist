@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- __VERSION__ は build/make-mac-app.sh が package.json の版で置き換える -->
+  <key>CFBundleDevelopmentRegion</key><string>ja</string>
+  <key>CFBundleExecutable</key><string>MrDrop</string>
+  <key>CFBundleIconFile</key><string>MrDrop</string>
+  <key>CFBundleIdentifier</key><string>jp.yastools.mrdrop.mac</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleName</key><string>Mr.Drop</string>
+  <key>CFBundleDisplayName</key><string>Mr.Drop</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>__VERSION__</string>
+  <key>CFBundleVersion</key><string>__VERSION__</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <!-- メニューバーだけ。Dock にもアプリ切り替えにも出さない -->
+  <key>LSUIElement</key><true/>
+  <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+  <key>NSHumanReadableCopyright</key><string>© 2026 yas-tools</string>
+  <!-- macOS 15 以降は LAN を触るアプリに「ローカルネットワーク」の許可ダイアログが出る。
+       子プロセスの node の分もこのアプリの責任として聞かれるので、文面はここに置く -->
+  <key>NSLocalNetworkUsageDescription</key><string>同じ Wi-Fi の iPhone から写真や動画を受け取るために使います。</string>
+  <key>NSBonjourServices</key><array><string>_mrdrop._tcp</string></array>
+  <key>NSSupportsAutomaticTermination</key><false/>
+  <key>NSSupportsSuddenTermination</key><false/>
+</dict>
+</plist>

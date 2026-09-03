@@ -1,5 +1,6 @@
-# 手元の設定（置き場所と合言葉が入るので配らない）
+# 手元の設定（置き場所と合言葉が入るので配らない）。退避した .bak も
 config.json
+config.json.bak-*
 
 # install-windows.ps1 が作るもの
 scripts/*.generated.vbs
