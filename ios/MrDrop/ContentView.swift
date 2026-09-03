@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import AVFoundation
 import UniformTypeIdentifiers
 
 /// 写真ピッカーから「**元のファイルのまま**」受け取るための入れ物。
@@ -44,6 +45,18 @@ struct PickedPhoto: StagedFile {
     }
 }
 
+/// 「扱いやすい形式で」のとき、写真はこちらで受け取る。
+/// iOS が同じ解像度の JPEG に変換して渡してくる（実測 1206×2622 のまま）。
+struct PickedJPEG: StagedFile {
+    let url: URL
+    let name: String
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .jpeg)  { try stage($0) }
+        FileRepresentation(importedContentType: .image) { try stage($0) }
+        FileRepresentation(importedContentType: .item)  { try stage($0) }
+    }
+}
+
 struct PickedMOV: StagedFile {
     let url: URL
     let name: String
@@ -72,6 +85,7 @@ struct ContentView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showFiles = false
     @State private var message: String?
+    @State private var convertForPC = MrDrop.convertForPC
 
     var body: some View {
         NavigationStack {
@@ -81,6 +95,7 @@ struct ContentView: View {
                 if !uploader.jobs.isEmpty { jobsSection }
                 peerSection
                 sendSection
+                formatSection
             }
             .navigationTitle("MrDrop")
             .onAppear { discovery.start() }
@@ -125,6 +140,19 @@ struct ContentView: View {
             Text("送り先の PC")
         } footer: {
             Text("見つからないときは、PC で MrDrop が動いているか、同じ Wi-Fi につながっているかを確かめてください。")
+        }
+    }
+
+    private var formatSection: some View {
+        Section {
+            Toggle("PC で扱いやすい形式にする", isOn: $convertForPC)
+                .onChange(of: convertForPC) { _, v in MrDrop.convertForPC = v }
+        } header: {
+            Text("送る形式")
+        } footer: {
+            Text(convertForPC
+                 ? "写真は JPEG、動画は MP4 にして送ります。動画は容器を替えるだけなので画質は変わりません（共有シートから送るときは、動画はそのままです）。"
+                 : "撮ったままの形式（HEIC・MOV）で送ります。画質と情報は一切変わりません。")
         }
     }
 
@@ -193,6 +221,34 @@ struct ContentView: View {
         return nil
     }
 
+    /// `.mov` を **作り直さずに** `.mp4` へ詰め替える（パススルー）。画質は変わらず、数秒で終わる。
+    /// 🔴 共有拡張ではやらない。メモリ 120MB の中で走らせると落ちる。
+    private func remuxToMP4(_ url: URL) async -> URL? {
+        guard url.pathExtension.lowercased() != "mp4" else { return url }
+        let asset = AVURLAsset(url: url)
+        guard let ex = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
+            MrDrop.log("変換", "🔴 パススルーの書き出しを作れませんでした")
+            return nil
+        }
+        let out = url.deletingPathExtension().appendingPathExtension("mp4")
+        try? FileManager.default.removeItem(at: out)
+        ex.outputURL = out
+        ex.outputFileType = .mp4
+        let started = Date()
+        await withCheckedContinuation { cont in
+            ex.exportAsynchronously { cont.resume() }
+        }
+        guard ex.status == .completed else {
+            // 詰め替えられない中身（Live Photo など）は、元のまま送る
+            MrDrop.log("変換", "🔴 詰め替え失敗（元のまま送ります）: \(ex.error.map(MrDrop.describe) ?? "理由不明")")
+            try? FileManager.default.removeItem(at: out)
+            return nil
+        }
+        MrDrop.log("変換", "mp4 へ詰め替え \(String(format: "%.1f", -started.timeIntervalSinceNow))秒")
+        try? FileManager.default.removeItem(at: url)     // 元は要らない
+        return out
+    }
+
     /// 進み具合（iCloud からのダウンロード）を拾いたいので、await 版ではなく
     /// Progress を返す版を使う。
     private func load<T: StagedFile>(_ item: PhotosPickerItem, as: T.Type,
@@ -216,16 +272,22 @@ struct ContentView: View {
                 MrDrop.log("アプリ", "取り込み開始 types=\(item.supportedContentTypes.map(\.identifier).joined(separator: ","))")
                 // 🔴 項目が名乗る型に合わせて受け口を選ぶ。ここを固定にすると変換されて画質が落ちる。
                 let types = item.supportedContentTypes
+                let isMovie = types.contains { $0.conforms(to: .movie) }
                 let outcome: Result<(url: URL, name: String)?, Error>
                 if types.contains(.mpeg4Movie) {
                     outcome = await load(item, as: PickedMP4.self, ticket: ticket)
-                } else if types.contains(where: { $0.conforms(to: .movie) }) {
+                } else if isMovie {
                     outcome = await load(item, as: PickedMOV.self, ticket: ticket)
+                } else if convertForPC {
+                    outcome = await load(item, as: PickedJPEG.self, ticket: ticket)   // HEIC → JPEG
                 } else {
                     outcome = await load(item, as: PickedPhoto.self, ticket: ticket)
                 }
                 do {
-                    if let f = try outcome.get() {
+                    if var f = try outcome.get() {
+                        if convertForPC, isMovie, let mp4 = await remuxToMP4(f.url) {
+                            f = (url: mp4, name: (f.name as NSString).deletingPathExtension + ".mp4")
+                        }
                         uploader.endStaging(ticket)
                         let size = (try? FileManager.default.attributesOfItem(atPath: f.url.path)[.size] as? Int64) ?? nil
                         MrDrop.log("アプリ", "取り込み成功 \(f.name) \(size ?? -1) バイト")

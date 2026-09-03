@@ -43,6 +43,13 @@ enum MrDrop {
         }
     }
 
+    /// 「PC で扱いやすい形式にして送る」。写真は JPEG、動画は MP4（容器の詰め替えのみ・無劣化）。
+    /// 既定は **切**（元のまま送る）。
+    static var convertForPC: Bool {
+        get { defaults?.bool(forKey: "convertForPC") ?? false }
+        set { defaults?.set(newValue, forKey: "convertForPC") }
+    }
+
     /// PC 側 config.json の token を入れたときだけ使う。空なら合言葉なし。
     static var token: String {
         get { defaults?.string(forKey: "token") ?? "" }

@@ -147,6 +147,21 @@ xcrun devicectl device copy from --device <UDID> \
 🔴 `--destination` に**ファイル名まで書かないと黙って失敗**します。
 🔴 App Group の中身は `appGroupDataContainer` からは見えません（実測）。
 
+# 🆕 「PC で扱いやすい形式にする」を足しました（既定は切）
+
+本人の用途が **Windows で扱う／YouTube に上げる**だったため。入にすると:
+
+| | 切（既定） | 入 |
+|---|---|---|
+| 写真 | HEIC のまま | **JPEG**（実測 4032×3024 のまま・縮小なし） |
+| 動画 | MOV のまま | **MP4**（`AVAssetExportPresetPassthrough` で容器の詰め替えのみ） |
+
+**実測: 49,945,088 バイトの `.mov` が 49,956,307 バイトの `.mp4` に。**ほぼ同じ＝作り直していません。
+中身は H.264 のままなので、Windows でもそのまま再生でき、YouTube の推奨形式にもなります。
+
+🔴 **共有シートから送るときは写真だけ JPEG で、動画はそのまま**です。
+メモリ 120MB の拡張で詰め替えを走らせると落ちるため、**動画の変換はアプリからのみ**。
+
 # 🔲 そちらへのお願い（据え置き）
 
 `server/lib/config.js` の既定の受信箱 `%USERPROFILE%\\Desktop\\受信箱` は **Mac で展開されません**。
