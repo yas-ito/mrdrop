@@ -2,42 +2,65 @@ import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
 
-/// 写真ピッカーから「元のファイルのまま」受け取るための入れ物。
-/// 🔴 Data で受け取ると HEIC が JPEG に落とされたり、動画でメモリが尽きたりする。
-///    ファイルの場所として受け取ること。
-struct PickedFile: Transferable {
-    let url: URL
-    let name: String
+/// 写真ピッカーから「**元のファイルのまま**」受け取るための入れ物。
+///
+/// 🔴 型を静的に並べてはいけない。**Photos は頼まれた型に「変換して」渡してくる。**
+///    実測（2026-09-03）: MP4 の 1080p 動画に `com.apple.quicktime-movie` を頼んだら、
+///    **568×320・611 kbps のメール用書き出し**が返ってきた（60分で 336MB）。
+///    `.item` ひとつでも、写真は JPEG に変換される。
+///    → **写真用・MOV用・MP4用を分けて持ち、項目が名乗る型に合わせて選ぶ。**
+protocol StagedFile: Transferable {
+    var url: URL { get }
+    var name: String { get }
+    init(url: URL, name: String)
+}
 
-    /// 🔴 受け口を `.item` ひとつにすると、写真ピッカーからの取り込みが**必ず**
-    ///    `CoreTransferable.TransferableSupportError error 0` で失敗する
-    ///    （2026-09-02・iOS 26.5 で確認）。ピッカーが差し出す型に合わせて分けて用意する。
-    ///    並び順が優先順位。画像・動画で受け、それ以外は `.item` で拾う。
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(importedContentType: .heic)          { try stage($0) }
-        FileRepresentation(importedContentType: .png)           { try stage($0) }
-        FileRepresentation(importedContentType: .quickTimeMovie){ try stage($0) }
-        FileRepresentation(importedContentType: .mpeg4Movie)    { try stage($0) }
-        FileRepresentation(importedContentType: .jpeg)          { try stage($0) }
-        FileRepresentation(importedContentType: .movie)         { try stage($0) }
-        FileRepresentation(importedContentType: .image)         { try stage($0) }
-        FileRepresentation(importedContentType: .item)          { try stage($0) }
-    }
-
-    /// 渡された場所はすぐ消えるので、App Group の中へ写しておく。
-    private static func stage(_ received: ReceivedTransferredFile) throws -> PickedFile {
+extension StagedFile {
+    /// 渡された場所はすぐ消えるので、App Group の中へ移しておく。
+    /// 🔴 1時間の動画は数GB。同じディスクなので**ハードリンクなら一瞬**で、容量も食わない。
+    static func stage(_ received: ReceivedTransferredFile) throws -> Self {
         let dir = try MrDrop.stagingDirectory()
         let dest = dir.appendingPathComponent(UUID().uuidString + "-" + received.file.lastPathComponent)
         try? FileManager.default.removeItem(at: dest)
-        // 🔴 1時間の動画は数GB。同じディスクなので**ハードリンクなら一瞬**で、
-        //    容量も食わない。できない相手（別ボリューム）のときだけコピーに落ちる。
         do {
             try FileManager.default.linkItem(at: received.file, to: dest)
         } catch {
             MrDrop.log("アプリ", "ハードリンク不可（コピーに落ちます）: \(MrDrop.describe(error))")
             try FileManager.default.copyItem(at: received.file, to: dest)
         }
-        return PickedFile(url: dest, name: received.file.lastPathComponent)
+        return Self(url: dest, name: received.file.lastPathComponent)
+    }
+}
+
+struct PickedPhoto: StagedFile {
+    let url: URL
+    let name: String
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .heic)  { try stage($0) }
+        FileRepresentation(importedContentType: .png)   { try stage($0) }
+        FileRepresentation(importedContentType: .jpeg)  { try stage($0) }
+        FileRepresentation(importedContentType: .image) { try stage($0) }
+        FileRepresentation(importedContentType: .item)  { try stage($0) }
+    }
+}
+
+struct PickedMOV: StagedFile {
+    let url: URL
+    let name: String
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .quickTimeMovie) { try stage($0) }
+        FileRepresentation(importedContentType: .movie)          { try stage($0) }
+        FileRepresentation(importedContentType: .item)           { try stage($0) }
+    }
+}
+
+struct PickedMP4: StagedFile {
+    let url: URL
+    let name: String
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .mpeg4Movie) { try stage($0) }
+        FileRepresentation(importedContentType: .movie)      { try stage($0) }
+        FileRepresentation(importedContentType: .item)       { try stage($0) }
     }
 }
 
@@ -170,6 +193,18 @@ struct ContentView: View {
         return nil
     }
 
+    /// 進み具合（iCloud からのダウンロード）を拾いたいので、await 版ではなく
+    /// Progress を返す版を使う。
+    private func load<T: StagedFile>(_ item: PhotosPickerItem, as: T.Type,
+                                     ticket: Int) async -> Result<(url: URL, name: String)?, Error> {
+        await withCheckedContinuation { cont in
+            let progress = item.loadTransferable(type: T.self) { result in
+                cont.resume(returning: result.map { picked in picked.map { (url: $0.url, name: $0.name) } })
+            }
+            Task { @MainActor in uploader.track(progress, for: ticket) }
+        }
+    }
+
     private func sendPhotos(_ items: [PhotosPickerItem]) {
         guard let p = currentPeer() else { message = "先に送り先の PC を選んでください。"; return }
         Task {
@@ -179,11 +214,15 @@ struct ContentView: View {
                 //    先に行を出しておかないと「押したのに無反応」に見える。
                 let ticket = uploader.beginStaging("取り込んでいます…")
                 MrDrop.log("アプリ", "取り込み開始 types=\(item.supportedContentTypes.map(\.identifier).joined(separator: ","))")
-                // 🔴 進み具合が要るので、await 版ではなく Progress を返す版を使う。
-                //    iCloud にしか無い動画は、ここがダウンロードの％になる。
-                let outcome: Result<PickedFile?, Error> = await withCheckedContinuation { cont in
-                    let progress = item.loadTransferable(type: PickedFile.self) { cont.resume(returning: $0) }
-                    Task { @MainActor in uploader.track(progress, for: ticket) }
+                // 🔴 項目が名乗る型に合わせて受け口を選ぶ。ここを固定にすると変換されて画質が落ちる。
+                let types = item.supportedContentTypes
+                let outcome: Result<(url: URL, name: String)?, Error>
+                if types.contains(.mpeg4Movie) {
+                    outcome = await load(item, as: PickedMP4.self, ticket: ticket)
+                } else if types.contains(where: { $0.conforms(to: .movie) }) {
+                    outcome = await load(item, as: PickedMOV.self, ticket: ticket)
+                } else {
+                    outcome = await load(item, as: PickedPhoto.self, ticket: ticket)
                 }
                 do {
                     if let f = try outcome.get() {

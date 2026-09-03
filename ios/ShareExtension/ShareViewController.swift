@@ -65,7 +65,7 @@ final class ShareViewController: UIViewController {
         MrDrop.log("拡張", "起動 項目数=\(items.count) 送り先=\(peer.name)")
         for item in items {
             for provider in item.attachments ?? [] {
-                MrDrop.log("拡張", "受け取れる型=\(provider.registeredTypeIdentifiers.joined(separator: ","))")
+                MrDrop.log("拡張", "受け取れる型=\(provider.registeredTypeIdentifiers.joined(separator: ",")) → 選んだ型=\(originalType(of: provider))")
                 guard let picked = await copyToStaging(provider) else { continue }
                 if uploader.send(fileURL: picked.file, filename: picked.name, to: peer, modified: nil) {
                     count += 1
@@ -76,23 +76,21 @@ final class ShareViewController: UIViewController {
         finish(count > 0 ? "\(peer.name) へ送っています（\(count)件）" : "送れるものがありませんでした。")
     }
 
-    /// 🔴 `public.item` で頼むと、写真は **JPEG に変換されて**渡される（2026-09-02 実測）。
-    ///    元のまま送るために、提供されている型のうち「実体の型」を先に選ぶ。
+    /// 🔴 **型を自分で選んではいけない。**Photos は頼まれた型に「変換して」渡してくる。
+    ///    実測（2026-09-03）: MP4 の 1080p 動画に `com.apple.quicktime-movie` を頼んだら、
+    ///    **568×320・611 kbps のメール用書き出し**が返ってきた（60分で 336MB）。
+    ///    `public.item` でも写真は JPEG に変換される。
+    ///
+    ///    正解は「**相手が並べた順の先頭**」。NSItemProvider は元に近い順に並べるので、
+    ///    明らかに縮小版だと分かるものだけ外して、先頭を採る。
     private func originalType(of provider: NSItemProvider) -> String {
-        let preferred = [
-            UTType.heic.identifier,          // iPhone の写真はたいていこれ
-            "public.heif",
-            UTType.rawImage.identifier,
-            UTType.quickTimeMovie.identifier, // iPhone の動画（.MOV）
-            UTType.mpeg4Movie.identifier,
-            UTType.png.identifier,            // スクリーンショット
-            UTType.jpeg.identifier,
-            UTType.movie.identifier,
-            UTType.image.identifier,
+        let avoid = [
+            "com.apple.private.photos.mail-movie-export",   // メール用の縮小動画
         ]
-        let has = provider.registeredTypeIdentifiers
-        for t in preferred where has.contains(t) { return t }
-        return has.first ?? UTType.item.identifier
+        let usable = provider.registeredTypeIdentifiers.filter {
+            !avoid.contains($0) && !$0.contains("thumbnail")
+        }
+        return usable.first ?? provider.registeredTypeIdentifiers.first ?? UTType.item.identifier
     }
 
     /// 🔴 loadFileRepresentation が渡してくる URL は、このクロージャの中でだけ有効。
