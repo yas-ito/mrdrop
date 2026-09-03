@@ -22,3 +22,6 @@ ios/**/DerivedData/
 
 # 配布物を作る場所（build/make-package.js）
 _build/
+
+# 同梱用に置く node.exe（92MB）。LICENSE だけは配布義務があるので git に入れる
+build/node/node.exe

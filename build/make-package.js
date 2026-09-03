@@ -3,8 +3,13 @@
 //
 //   node build/make-package.js                          既定の場所に作る
 //   node build/make-package.js out.zip                  出力先を指定する
-//   node build/make-package.js --with-node "C:\Program Files\nodejs\node.exe"
-//                                                       node.exe も同梱する（受け取る人は Node 不要）
+//   node build/make-package.js --with-node build/node/node.exe
+//                                         node.exe も同梱する（受け取る人は Node 不要）
+//   🔴 build/node/ に LICENSE を置いてある（Node.js は MIT。全文を添えずに配ってはいけない）。
+//      node.exe は 92MB あるので git に入れていない。作る前にコピーしてくること:
+//        copy "C:\Program Files\nodejs\node.exe" build\node\
+//      Node の版を上げたら、LICENSE も同じタグのものに取り替える:
+//        https://raw.githubusercontent.com/nodejs/node/v<版>/LICENSE
 //
 // 中身（受け取る人から見える名前）:
 //   MrDrop_v<版>_win/はじめる.bat            ← ダブルクリックするだけ
@@ -67,6 +72,29 @@ const read = (rel) => {
   return fs.readFileSync(p);
 };
 
+// 🔴 Node を同梱したら、説明書の「Node.js を入れる」節は嘘になる。作る側で差し替える。
+//    印（NODE-SETUP / NODE-BADGE）が無ければ止める。説明書を書き直したときにここが黙って
+//    効かなくなり、「Node を入れてください」と書いたまま配ってしまうのを防ぐため。
+const manual = (buf, bundled) => {
+  let s = buf.toString("utf8");
+  const swap = (name, repl) => {
+    const a = `<!-- ${name}:START -->`, b = `<!-- ${name}:END -->`;
+    const i = s.indexOf(a), j = s.indexOf(b);
+    if (i < 0 || j < 0 || j < i) fail(`取扱説明書.html の印 ${name} がありません（同梱版への差し替えができません）`);
+    if (bundled) s = s.slice(0, i + a.length) + repl + s.slice(j);
+  };
+  swap("NODE-SETUP", `
+    <h2>使う前に — 入れるものはありません</h2>
+    <p>この道具は <strong>Node.js</strong> という無料の実行環境の上で動きますが、
+      <strong>それはこの中に入っています</strong>（<code>node</code> フォルダ）。
+      PC に何かを入れる必要はありません。<strong>「はじめる.bat」を押すだけです。</strong></p>
+    <div class="hint">すでに Node.js を入れている PC でも、こちらに入っている方を使います。
+      お使いの Node.js には触りません。ライセンス表記は <code>node/Node.js-LICENSE.txt</code> にあります。</div>
+    `);
+  swap("NODE-BADGE", `<span class="env-badge">Node.js 同梱（入れなくて構いません）</span>`);
+  return bundled ? Buffer.from(s, "utf8") : buf;
+};
+
 // 🔴 bat は ASCII・CRLF。cmd.exe は .bat を CP932 として読むので、日本語が混ざると壊れる。
 //    .gitattributes で CRLF に固定してあるが、ここでも直して検査する（作る側で完結させる）。
 let bat = read("はじめる.bat");
@@ -81,7 +109,7 @@ if (!(ps1[0] === 0xef && ps1[1] === 0xbb && ps1[2] === 0xbf)) {
 
 const items = [
   ["はじめる.bat", bat],
-  ["取扱説明書.html", read("取扱説明書.html")],
+  ["取扱説明書.html", manual(read("取扱説明書.html"), nodeExe)],
   ["server/mrdrop.js", read("server/mrdrop.js")],
   ["server/lib/config.js", read("server/lib/config.js")],
   ["server/lib/http.js", read("server/lib/http.js")],
@@ -205,6 +233,7 @@ fs.writeFileSync(OUT, Buffer.concat(chunks));
   say("UTF-8フラグ(bit 11): 全エントリで立っている");
   say(nodeExe ? "node.exe: 同梱（受け取る人に Node は要りません）"
               : "node.exe: 同梱していません（受け取る人の PC に Node が要ります）");
+  if (nodeExe) say("取扱説明書: 「Node.js を入れる」の節を同梱版に差し替えた");
 }
 
 console.log("");
