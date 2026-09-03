@@ -5,6 +5,7 @@
 //   node server/mrdrop.js              ふつうに起動する
 //   node server/mrdrop.js --port 9000  番号を変えて起動する
 //   node server/mrdrop.js --browse     いま LAN で見えている Mr.Drop を探す（動作確認用）
+//   node server/mrdrop.js --follow-stdin   stdin が閉じたら終わる（Mac 版アプリが子プロセスとして回すとき）
 //
 // 🔴 npm install は要らない。外部パッケージを1つも使っていない。
 
@@ -17,7 +18,12 @@ const { Responder, browse, localIPv4s } = require("./lib/mdns");
 
 const VERSION = "1.0.0";
 const ROOT = path.join(__dirname, "..");
-const LOG_DIR = path.join(process.env.LOCALAPPDATA || os.tmpdir(), "MrDrop");
+// 記録の置き場所。Windows は %LOCALAPPDATA%\MrDrop、Mac は ~/Library/Logs/MrDrop。
+// 🔴 Mac で os.tmpdir() に置くと 3 日で掃除され、問い合わせのときに読めなくなる（Mac 版アプリの
+//    「記録を開く」もここを開く）。
+const LOG_DIR = process.platform === "darwin"
+  ? path.join(os.homedir(), "Library", "Logs", "MrDrop")
+  : path.join(process.env.LOCALAPPDATA || os.tmpdir(), "MrDrop");
 const LOG_FILE = path.join(LOG_DIR, "mrdrop.log");
 const LOG_MAX = 2 * 1024 * 1024;
 
@@ -56,11 +62,12 @@ function makeLogger() {
 }
 
 function parseArgs(argv) {
-  const a = { port: null, browse: false, config: path.join(ROOT, "config.json") };
+  const a = { port: null, browse: false, followStdin: false, config: path.join(ROOT, "config.json") };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--port") a.port = Number(argv[++i]);
     else if (argv[i] === "--config") a.config = argv[++i];
     else if (argv[i] === "--browse") a.browse = true;
+    else if (argv[i] === "--follow-stdin") a.followStdin = true;
   }
   return a;
 }
@@ -142,6 +149,15 @@ async function main() {
   };
   process.on("SIGINT", bye);
   process.on("SIGTERM", bye);
+  // --follow-stdin: 親（Mac 版アプリ）が消えたら一緒に終わる。親が強制終了されても
+  // stdin のパイプが閉じるので、受信サーバーだけが番号を握ったまま残ることがない。
+  // 🔴 既定では読まない。タスクスケジューラ起動の node は stdin が無い／嘘をつくため。
+  if (args.followStdin) {
+    process.stdin.on("end", bye);
+    process.stdin.on("close", bye);
+    process.stdin.on("error", bye);
+    process.stdin.resume();
+  }
 }
 
 main().catch((e) => { console.error("🔴", e && e.stack ? e.stack : e); process.exit(1); });
