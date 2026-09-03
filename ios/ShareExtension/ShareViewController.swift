@@ -92,12 +92,19 @@ final class ShareViewController: UIViewController {
         }
         let best = usable.first ?? provider.registeredTypeIdentifiers.first ?? UTType.item.identifier
 
-        // 「扱いやすい形式で」が入っていれば、写真だけ JPEG を頼む。
-        // 🔴 動画はここでは変換しない。メモリ 120MB の中で作り直すと落ちる。
-        if MrDrop.convertForPC, MrDrop.isHEIF(best), usable.contains(UTType.jpeg.identifier) {
-            return UTType.jpeg.identifier
+        // 🔴 動画は、相手が並べた先頭をそのまま使う（型を指定すると変換されて画質が落ちる）。
+        //    ここでは変換もしない。メモリ 120MB の中で作り直すと落ちる。
+        guard UTType(best)?.conforms(to: .image) == true else { return best }
+
+        // 写真は選び直す。
+        // 🔴 写真アプリは `public.jpeg` を先頭に並べてくることがあるので、
+        //    「先頭をそのまま」だと、切にしていても JPEG になってしまう。
+        if MrDrop.convertForPC {
+            if usable.contains(UTType.jpeg.identifier) { return UTType.jpeg.identifier }
+            return best
         }
-        return best
+        // 切のときは、撮ったままの HEIC / HEIF があればそれを選ぶ
+        return usable.first(where: { MrDrop.isHEIF($0) }) ?? best
     }
 
     /// 🔴 loadFileRepresentation が渡してくる URL は、このクロージャの中でだけ有効。
