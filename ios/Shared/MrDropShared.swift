@@ -153,6 +153,17 @@ enum MrDrop {
         return s
     }
 
+    /// 拡張子を小文字に揃える。
+    /// 🔴 写真アプリは元のファイル名を大文字で持っている（`IMG_0001.HEIC`）が、
+    ///    アプリ経由だと iOS が作り直すので小文字になる。同じ1枚が2つの名前で
+    ///    PC に並ぶのを防ぐため、送る直前にここで揃える。
+    static func tidyName(_ name: String) -> String {
+        let ns = name as NSString
+        let ext = ns.pathExtension
+        guard !ext.isEmpty else { return name }
+        return ns.deletingPathExtension + "." + ext.lowercased()
+    }
+
     // MARK: - 送るための組み立て
 
     static func uploadRequest(to peer: Peer, filename: String, modified: Date?) -> URLRequest? {

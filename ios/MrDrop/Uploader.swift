@@ -98,8 +98,9 @@ final class Uploader: NSObject, ObservableObject {
     @discardableResult
     /// - Parameter whileWatching: 画面を開いたまま送るなら true（速い普通のセッションを使う）。
     ///   共有拡張からは必ず false。アプリが消えても続くように background のままにする。
-    func send(fileURL: URL, filename: String, to peer: MrDrop.Peer, modified: Date?,
+    func send(fileURL: URL, filename rawName: String, to peer: MrDrop.Peer, modified: Date?,
               whileWatching: Bool = false) -> Bool {
+        let filename = MrDrop.tidyName(rawName)      // 拡張子は小文字に揃える
         guard let req = MrDrop.uploadRequest(to: peer, filename: filename, modified: modified) else { return false }
         let task = (whileWatching ? live! : session!).uploadTask(with: req, fromFile: fileURL)
         task.taskDescription = fileURL.path              // 済んだら消すために覚えておく
