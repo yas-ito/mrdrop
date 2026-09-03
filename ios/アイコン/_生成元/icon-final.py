@@ -8,8 +8,11 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 OUT = os.path.abspath("../AppIcon.png")
 
 # 大きく・丸く。height/R を小さくするほど先が丸くなる（2.2→1.8）
-CX, CY, R = 512, 596, 252
-DROP = drop_path(CX, CY, R, 452, bulge=46)
+R, HEIGHT = 252, 452
+# 🔴 CY は「見た目の真ん中」から逆算する。上の余白＝下の余白 になる位置:
+#    (CY - HEIGHT) == 1024 - (CY + R)  →  CY = (1024 + HEIGHT - R) / 2
+CX, CY = 512, (1024 + HEIGHT - R) // 2
+DROP = drop_path(CX, CY, R, HEIGHT, bulge=46)
 AY = CY - 6                        # 矢印の中心。丸い部分の中に収める
 LEN, HALF = 140, 88                # 矢羽根の長さと開き
 
