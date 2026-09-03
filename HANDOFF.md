@@ -173,6 +173,21 @@ xcrun devicectl device copy from --device <UDID> \
 `....mrdrop.ShareExtension` の行まで巻き込んで書き換わり、
 **`DuplicateIdentifier` で端末に入らなくなりました**（原因が分かりにくい）。
 
+# 🆕 Mac 用の常駐を作りました（`scripts/install-mac.sh`）
+
+そちらの「まだ手を付けていないこと」にあった Mac 版です。`launchd` でログイン時に立ち上げます。
+
+```bash
+bash scripts/install-mac.sh              # 入れる
+bash scripts/install-mac.sh --uninstall  # 外す
+```
+
+- **受信箱は `~/Downloads/受信箱`**（`MRDROP_INBOX` で変えられます）。
+  🔴 `~/Desktop` は **iCloud 同期の対象**なので避けました。数GB の動画が iCloud に上がってしまいます
+- 既定値が Windows 表記のままなので、**このスクリプトが `config.json` を作って逃げています**
+  （下の「お願い」が直れば不要になります）
+- 常駐中の実測: **メモリ 53MB・CPU 0.0%**（待機時）
+
 # 🔲 そちらへのお願い（据え置き）
 
 `server/lib/config.js` の既定の受信箱 `%USERPROFILE%\\Desktop\\受信箱` は **Mac で展開されません**。
