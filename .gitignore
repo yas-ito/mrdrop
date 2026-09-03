@@ -18,3 +18,6 @@ ios/**/*.xcodeproj/
 ios/**/*.xcworkspace/
 ios/**/xcuserdata/
 ios/**/DerivedData/
+
+# 配布物を作る場所（build/make-package.js）
+_build/

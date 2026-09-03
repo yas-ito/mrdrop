@@ -97,6 +97,31 @@ bash scripts/install-mac.sh --uninstall  # 外す
 
 ---
 
+## ほかの人に渡す
+
+git も node も知らない人に渡せる ZIP を作れます。
+
+```bash
+node build/make-package.js
+```
+
+`_build/MrDrop_v<版>_win.zip` ができます。中身は **7 ファイルだけ**（`はじめる.bat`・
+`取扱説明書.html`・`server/`・`scripts/install-windows.ps1`）。
+受け取った人は**展開して `はじめる.bat` を押すだけ**です。
+
+- **受け取る人の PC には Node.js が要ります。**入っていなければ `はじめる.bat` がその旨を出します。
+  取扱説明書の先頭に入れ方（`winget install OpenJS.NodeJS.LTS`）を書いてあります
+- **Node ごと配るなら** `--with-node "C:\Program Files\nodejs\node.exe"` を付けます。
+  🔴 その場合は **node.exe の隣に Node.js の `LICENSE`（MIT）を置いてください**。
+  Windows の Node には全文が入っていないので、[nodejs.org の zip 版](https://nodejs.org/ja/download)
+  から持ってきます。無いときは make-package.js が止めます
+- 🔴 **ZIP は自前で書いています。**ファイル名の UTF-8 フラグ（bit 11）を立てないと、
+  Windows で `はじめる.bat` が文字化けして開けなくなります。作ったあとに読み返して検査しています
+
+```bash
+node build/make-package.js --with-node "C:\Program Files\nodejs\node.exe"
+```
+
 ## iPhone アプリ
 
 `ios/` にソースがあります。**Xcode が要るので Mac で作ります。**

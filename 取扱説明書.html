@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Mr.Drop v1.0.0 取扱説明書</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #fff;
+    line-height: 1.85;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 0 0 24mm;
+    position: relative;
+  }
+
+  .cover-header {
+    background: #0b0d12;
+    color: #fff;
+    padding: 18mm 18mm 12mm;
+    margin-bottom: 10mm;
+  }
+  .cover-logo { font-size: 32px; font-weight: 900; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .cover-logo span { color: #4d84ff; }
+  .cover-version { font-size: 13px; color: #aaa; letter-spacing: 0.08em; }
+  .cover-tagline { font-size: 14px; color: #ccc; margin-top: 10px; font-weight: 400; }
+  .cover-badge {
+    display: inline-block; margin-top: 10px; padding: 3px 10px;
+    background: #4d84ff; color: #fff; font-size: 11px; font-weight: bold;
+    border-radius: 12px; letter-spacing: 0.04em;
+  }
+
+  .content { padding: 0 18mm; }
+
+  h2 {
+    font-size: 15px; font-weight: bold; margin: 24px 0 10px;
+    padding: 6px 10px; background: #f0f0f0;
+    border-left: 4px solid #4d84ff; letter-spacing: 0.03em;
+  }
+  h3 { font-size: 13px; font-weight: bold; margin: 16px 0 6px; color: #222; }
+
+  p { margin-bottom: 8px; }
+  ul, ol { margin: 6px 0 10px 18px; }
+  li { margin-bottom: 5px; }
+  strong { font-weight: bold; }
+
+  .quickstart {
+    border: 1px solid #4d84ff; border-radius: 5px;
+    padding: 12px 14px 8px; margin: 12px 0 16px; background: #f5f8ff;
+  }
+  .quickstart-title { font-weight: bold; font-size: 12px; color: #2f6df6; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .quickstart ol { margin-left: 16px; }
+
+  .caution {
+    border: 1px solid #e0a84d; border-radius: 4px;
+    padding: 10px 14px; background: #fffbf0; margin: 10px 0 14px;
+  }
+  .caution-title { font-weight: bold; font-size: 12px; color: #b07a00; margin-bottom: 6px; }
+
+  .good {
+    border: 1px solid #4db87a; border-radius: 4px;
+    padding: 10px 14px; background: #f3fbf6; margin: 10px 0 14px;
+  }
+  .good-title { font-weight: bold; font-size: 12px; color: #2f8f5c; margin-bottom: 6px; }
+
+  code {
+    font-family: "Menlo", "Consolas", monospace;
+    background: #ececec; padding: 1px 5px; border-radius: 3px; font-size: 11.5px;
+  }
+  pre {
+    font-family: "Menlo", "Consolas", monospace; font-size: 11.5px;
+    background: #16181d; color: #e8eaf0; padding: 10px 14px; border-radius: 5px;
+    margin: 8px 0 12px; line-height: 1.6; overflow-x: auto;
+  }
+
+  .hint {
+    font-size: 11.5px; color: #555; background: #f7f7f7;
+    border-left: 3px solid #bbb; padding: 6px 10px; margin: 6px 0 12px;
+    border-radius: 0 3px 3px 0;
+  }
+
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; font-size: 12px; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f4f5f8; font-weight: bold; white-space: nowrap; }
+
+  .qa-item { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e8e8e8; }
+  .qa-item:last-child { border-bottom: none; }
+  .qa-q { font-weight: bold; color: #1a1a1a; margin-bottom: 4px; padding-left: 20px; position: relative; }
+  .qa-q::before { content: "Q."; position: absolute; left: 0; color: #4d84ff; font-weight: 900; }
+  .qa-a { padding-left: 20px; color: #333; position: relative; }
+  .qa-a::before { content: "A."; position: absolute; left: 0; color: #888; font-weight: bold; }
+
+  .env-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .env-badge { background: #0b0d12; color: #fff; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: bold; }
+
+  .steps { display: flex; flex-direction: column; gap: 14px; margin: 10px 0 16px; }
+  .step-row { display: flex; align-items: flex-start; gap: 12px; }
+  .step-num {
+    flex-shrink: 0; width: 22px; height: 22px; background: #4d84ff; color: #fff;
+    font-size: 11px; font-weight: 900; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-label { font-weight: bold; font-size: 12.5px; margin-bottom: 6px; color: #222; }
+
+  .win-file {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #f3f3f3; border: 1px solid #ccc; border-radius: 4px;
+    padding: 6px 12px; font-size: 12px; color: #111;
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  .win-file-icon { font-size: 18px; }
+
+  .footer {
+    position: absolute; bottom: 10mm; left: 18mm; right: 18mm;
+    display: flex; justify-content: space-between;
+    font-size: 10.5px; color: #999; border-top: 1px solid #e0e0e0; padding-top: 5px;
+  }
+
+  .page-break { page-break-after: always; }
+
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; }
+    .page-break { page-break-after: always; }
+  }
+
+  @page { size: A4; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- ════ PAGE 1 ════ -->
+<div class="page">
+  <div class="cover-header">
+    <div class="cover-logo">Mr.<span>Drop</span></div>
+    <div class="cover-version">version 1.0.0 — 取扱説明書</div>
+    <div class="cover-tagline">iPhone から、同じ Wi-Fi の PC へ。写真も動画も、そのまま。</div>
+    <div class="cover-badge">Windows / インターネットを通りません</div>
+  </div>
+
+  <div class="content">
+
+    <div class="quickstart">
+      <div class="quickstart-title">まず、これだけ</div>
+      <ol>
+        <li>ZIP を右クリック →「<strong>すべて展開</strong>」（中身だけ取り出すと動きません）</li>
+        <li><strong>はじめる.bat</strong> をダブルクリック</li>
+        <li>黒い画面に出た住所を、iPhone の <strong>Safari</strong> で開く</li>
+        <li>「写真・動画を選ぶ」を押す。選んだ瞬間に PC へ届きます</li>
+      </ol>
+    </div>
+
+    <h2>このツールについて</h2>
+    <p>Mr.Drop は、<strong>iPhone から、同じ Wi-Fi につながっている PC へファイルを送る</strong>道具です。
+       Windows には AirDrop が無いので、その代わりになるものとして作りました。</p>
+    <ul>
+      <li><strong>インターネットを通りません。</strong>端末どうしが直接やりとりします。写真がどこかのサーバーに残ることはありません</li>
+      <li><strong>元のまま届きます。</strong>HEIC が JPEG に変換されたり、動画が小さくされたりしません</li>
+      <li><strong>アプリを入れなくても使えます。</strong>iPhone の Safari で開くだけです</li>
+      <li><strong>PC → iPhone もできます。</strong>PC の「送信箱」に入れたものを、iPhone から受け取れます</li>
+    </ul>
+    <div class="hint">追加のソフトは何も入りません。この道具は外部の部品（npm パッケージ）を1つも使っていないので、
+      入るのは <code>server</code> フォルダの中の数個のファイルだけです。</div>
+
+    <h2>使う前に — Node.js を入れる</h2>
+    <p>この道具は <strong>Node.js</strong> という無料の実行環境の上で動きます。PC に入っていなければ、先に入れてください（1回だけです）。</p>
+
+    <h3>入れ方（どちらでも構いません）</h3>
+    <ul>
+      <li><strong>公式サイトから：</strong><code>https://nodejs.org/ja</code> を開き、<strong>LTS</strong> と書かれた方をダウンロードして実行します。設定は変えず「次へ」で進めて構いません</li>
+      <li><strong>コマンドから（Windows 11）：</strong>スタートを右クリック →「ターミナル」を開いて、次を貼り付けます
+        <pre>winget install OpenJS.NodeJS.LTS</pre>
+      </li>
+    </ul>
+    <div class="hint">入れたあとは、<strong>開いていた黒い画面を一度閉じてから</strong>「はじめる.bat」を押してください。
+      閉じないと、入れたばかりの Node.js を見つけられないことがあります。</div>
+
+    <h2>始める</h2>
+    <div class="steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-label">はじめる.bat をダブルクリック</div>
+          <div class="win-file"><span class="win-file-icon">⚙️</span> はじめる.bat</div>
+          <p style="margin-top:8px">黒い画面が出て、こう表示されます。<strong>この画面は閉じないでください。</strong>
+             閉じると受け取れなくなります（送っている間だけで構いません）。</p>
+          <pre>  Mr.Drop 1.0.0   MY-PC
+────────────────────────────────────────────────────
+  受信箱  C:\Users\あなた\Desktop\受信箱
+  送信箱  C:\Users\あなた\Desktop\送信箱
+────────────────────────────────────────────────────
+  iPhone の Safari から、このどれかを開いてください:
+    http://my-pc.local:48630
+    http://192.168.1.20:48630      （イーサネット）</pre>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-label">Windows が「アクセスを許可しますか」と聞いてきたら</div>
+          <p><strong>「プライベート ネットワーク」にチェックを入れて「アクセスを許可する」</strong>を押してください。
+             ここで断ると、iPhone から PC が見えません。<br>
+             「パブリック ネットワーク」にはチェックを入れないでください（カフェなどの Wi-Fi で開いてしまわないためです）。</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-label">iPhone の Safari で、表示された住所を開く</div>
+          <p><code>http://＜PC名＞.local:48630</code> が開ければ、いちばん簡単です。開けないときは、その下に出ている
+             <code>http://192.168.…</code> の方を打ってください。<strong>iPhone と PC が同じ Wi-Fi につながっている必要があります。</strong></p>
+          <p>共有ボタン →「<strong>ホーム画面に追加</strong>」しておくと、次からはアプリのように1タップで開けます。</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="footer">
+    <span>Mr.Drop v1.0.0 取扱説明書</span><span>1 / 3</span><span>© 2026</span>
+  </div>
+</div>
+<div class="page-break"></div>
+
+<!-- ════ PAGE 2 ════ -->
+<div class="page">
+  <div class="content" style="padding-top:18mm">
+
+    <h2>送る・受け取る</h2>
+
+    <h3>iPhone → PC（送る）</h3>
+    <p>画面の「<strong>写真・動画を選ぶ</strong>」または「ファイルを選ぶ」を押して、送りたいものを選びます。</p>
+    <div class="caution">
+      <div class="caution-title">⚠ 送信ボタンはありません</div>
+      <p><strong>選んだ瞬間に送り始めます。</strong>「送信」ボタンを探す必要はありません。
+         棒グラフが伸びて「送りました」に変われば完了です。何度も選び直すと、同じ写真が何枚も届きます。</p>
+    </div>
+    <p>届いたものは PC の<strong>受信箱</strong>（初期設定ではデスクトップの「受信箱」フォルダ）に入ります。</p>
+
+    <h3>PC → iPhone（受け取る）</h3>
+    <p>PC の<strong>送信箱</strong>フォルダに入れたファイルが、iPhone の画面の下の方に一覧で出ます。
+       「受け取る」を押すと iPhone に落ちます。</p>
+
+    <h3>大きい動画を送るとき</h3>
+    <ul>
+      <li>数GB の動画でも送れます。速さは Wi-Fi 次第です（有線の PC 相手なら、実測で毎秒 60〜80MB 出ています）</li>
+      <li><strong>途中で切れたファイルは受信箱に出しません。</strong>中途半端なファイルが紛れ込まないようにしてあります。切れたら、もう一度送ってください</li>
+      <li>iPhone の画面は、送っている間つけたままにしてください</li>
+    </ul>
+
+    <h2>安全の話（読んでください）</h2>
+    <div class="caution">
+      <div class="caution-title">⚠ 同じ Wi-Fi にいる人は、誰でも使えます</div>
+      <p>初期設定では、<strong>同じネットワークの中にいる人なら誰でも</strong>あなたの PC へファイルを送れ、
+         <strong>送信箱の中身を見て受け取れます</strong>。家の Wi-Fi なら問題になりませんが、
+         <strong>職場・学校・宿・カフェなど、知らない人が同じ Wi-Fi にいる場所では使わないでください。</strong></p>
+    </div>
+    <ul>
+      <li>インターネット側からは使えません。<strong>同じネットワークの中からしか受け付けない</strong>作りになっています</li>
+      <li>ファイアウォールは「プライベート ネットワーク」だけに開けてください（上の手順2）</li>
+      <li><strong>受信箱と送信箱の外には、絶対に書き込みません。</strong>ファイル名に <code>..\</code> のような細工がされていても、名前だけを取り出して受信箱に入れます</li>
+    </ul>
+
+    <h3>合言葉をつける</h3>
+    <p>どうしても人の多いネットワークで使うなら、合言葉を設定してください。</p>
+    <ol>
+      <li>一度「はじめる.bat」を動かすと、隣に <code>config.json</code> ができます</li>
+      <li>メモ帳で開いて <code>"token": ""</code> を <code>"token": "すきな合言葉"</code> に書き換えます</li>
+      <li>黒い画面を閉じて、もう一度「はじめる.bat」を押します</li>
+      <li>iPhone からは <code>http://…:48630/?t=すきな合言葉</code> で開きます</li>
+    </ol>
+
+    <h2>置き場所と設定</h2>
+    <p>「はじめる.bat」の隣にできる <code>config.json</code> を書き換えると、置き場所や番号を変えられます。</p>
+    <table>
+      <tr><th>項目</th><th>意味</th></tr>
+      <tr><td><code>port</code></td><td>使う番号。初期値は 48630。他のソフトとぶつかったときだけ変えてください</td></tr>
+      <tr><td><code>inbox</code></td><td>iPhone から届いたものが入るフォルダ</td></tr>
+      <tr><td><code>outbox</code></td><td>ここに置いたものを iPhone から受け取れます</td></tr>
+      <tr><td><code>name</code></td><td>iPhone に見える名前。空なら PC 名になります</td></tr>
+      <tr><td><code>token</code></td><td>合言葉。空なら合言葉なしです</td></tr>
+    </table>
+    <div class="good">
+      <div class="good-title">✓ 使い道のひとつ</div>
+      <p><code>inbox</code> を<strong>動画編集の素材フォルダ</strong>にしておくと、iPhone で撮った素材が、
+         そのまま編集用のフォルダに落ちてきます。取り込みの手間がまるごと無くなります。</p>
+    </div>
+
+    <h2>ずっと使えるようにする（任意）</h2>
+    <p>毎回「はじめる.bat」を押すのが面倒なら、Windows にログインしたら勝手に動くようにできます。
+       <strong>黒い画面も出なくなります。</strong></p>
+    <ol>
+      <li><code>scripts</code> フォルダを開く</li>
+      <li><code>install-windows.ps1</code> を右クリック →「<strong>PowerShell で実行</strong>」<br>
+        <span class="hint" style="display:block">うまくいかないときは、スタートを右クリック →「ターミナル（管理者）」を開き、
+        <code>cd</code> のあとに <code>scripts</code> フォルダをドラッグしてから <code>.\install-windows.ps1</code> と打ちます。</span></li>
+    </ol>
+    <p>ファイアウォールを開け、自動で立ち上がるように登録します。<strong>管理者の権限が要ります。</strong></p>
+    <table>
+      <tr><th>やめたいとき</th><td><code>.\install-windows.ps1 -Uninstall</code>（受信箱の中身はそのままです）</td></tr>
+      <tr><th>今どうなっているか</th><td><code>.\install-windows.ps1 -Status</code></td></tr>
+    </table>
+
+  </div>
+  <div class="footer">
+    <span>Mr.Drop v1.0.0 取扱説明書</span><span>2 / 3</span><span>© 2026</span>
+  </div>
+</div>
+<div class="page-break"></div>
+
+<!-- ════ PAGE 3 ════ -->
+<div class="page">
+  <div class="content" style="padding-top:18mm">
+
+    <h2>よくある質問</h2>
+
+    <div class="qa-item">
+      <div class="qa-q">iPhone の Safari で <code>.local</code> の住所が開けません</div>
+      <div class="qa-a">黒い画面に一緒に出ている <code>http://192.168.…</code> の方を打ってください。こちらは必ず開きます。
+        <code>.local</code> は Wi-Fi 機器によって通らないことがあります。</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">どちらの住所でも開けません</div>
+      <div class="qa-a">まず <strong>iPhone と PC が同じ Wi-Fi か</strong>を確かめてください（PC が有線でも、同じルーターなら大丈夫です）。
+        次に、Windows のファイアウォールで「プライベート ネットワーク」を許可したかを確かめてください。
+        <code>scripts\install-windows.ps1</code> を実行すると、そこも含めて整えられます。</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">「WindowsによってPCが保護されました」と出ました</div>
+      <div class="qa-a">インターネットから落としたファイルに出る警告です。「詳細情報」→「実行」で進めます。
+        気になるときは、ZIP を右クリック →「プロパティ」→「セキュリティ: 許可する」にチェックを入れてから展開してください。</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">黒い画面を閉じてしまいました</div>
+      <div class="qa-a">もう一度「はじめる.bat」を押せば戻ります。送っている途中で閉じた場合、そのファイルは届いていません
+        （中途半端なファイルは残らないようにしてあります）。</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">同じ名前のファイルを送ったら、上書きされますか</div>
+      <div class="qa-a">されません。<code>写真.jpg</code> の次は <code>写真 (2).jpg</code> になります。</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">iPhone のアプリはありますか</div>
+      <div class="qa-a">ソースはありますが、<strong>配布はしていません</strong>（App Store に出していないため、
+        入れるには Mac と Xcode が要ります）。<strong>Safari から使う分には、アプリと同じことができます。</strong>
+        共有ボタン →「ホーム画面に追加」をしておくと、見た目もアプリとほぼ同じになります。</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Android でも使えますか</div>
+      <div class="qa-a">同じ Wi-Fi にいれば、Chrome で同じ住所を開くだけで使えます。iPhone 専用ではありません。</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Mac でも動きますか</div>
+      <div class="qa-a">動きます。ただし<strong>この ZIP は Windows 用</strong>で、Mac 用の起動役は入っていません。
+        Mac で使うときは配布元から一式を取得し、<code>bash scripts/install-mac.sh</code> を実行してください
+        （受信箱は <code>~/Downloads/受信箱</code> になります）。</div>
+    </div>
+
+    <h2>動作環境</h2>
+    <div class="env-list">
+      <span class="env-badge">Windows 10 / 11</span>
+      <span class="env-badge">Node.js 18 以降</span>
+      <span class="env-badge">iPhone（Safari）/ Android（Chrome）</span>
+      <span class="env-badge">同じ Wi-Fi（LAN）</span>
+    </div>
+    <div class="hint">すべての環境での動作を保証するものではありません。Wi-Fi 機器の設定によっては、
+      同じネットワークにいる機器どうしの通信が禁止されている場合があり（プライバシーセパレータ等）、
+      そのときはこの道具は使えません。</div>
+
+    <h2>更新履歴</h2>
+    <h3>v1.0.0</h3>
+    <ul><li>初回リリース</li></ul>
+
+    <h2>免責事項</h2>
+    <p>本ソフトウェアは<strong>現状のまま</strong>提供されます。本ソフトウェアの使用により生じたいかなる損害についても、
+       制作者は責任を負いません。使用は自己責任でお願いします。</p>
+    <p>大切なファイルの<strong>唯一の保管場所として使わないでください。</strong>これは「送る」ための道具であって、
+       バックアップの道具ではありません。</p>
+
+    <h2>ご連絡について</h2>
+    <p>不具合のご報告・ご要望は、配布元のページからお送りください。
+       すべてのご連絡への個別返信はお約束できかねますが、今後の改善の参考にさせていただきます。</p>
+
+  </div>
+  <div class="footer">
+    <span>Mr.Drop v1.0.0 取扱説明書</span><span>3 / 3</span><span>© 2026</span>
+  </div>
+</div>
+
+</body>
+</html>

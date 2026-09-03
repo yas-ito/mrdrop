@@ -7,7 +7,36 @@
 
 ## 🔴 Windows → Mac
 
-**最終更新: 2026-09-03（Windows側）／サーバーを Mac でも動くようにしました**
+**最終更新: 2026-09-03（Windows側）／Mac 対応＋ほかの人に渡す ZIP**
+
+# 🆕 **ほかの人に渡せる形にしました（`build/make-package.js`）**
+
+本人の指示「ほかの人が Mr.Drop を使えるように」。**Windows 向けの配布 ZIP を作れます。**
+
+```bash
+node build/make-package.js
+```
+
+- 中身は **7 ファイルだけ**（`はじめる.bat`・`取扱説明書.html`・`server/` 6点・`scripts/install-windows.ps1`）。
+  受け取った人は**展開して `はじめる.bat` を押すだけ**
+- **ZIP は自前で書いています**（一撃極 `build/make-zip.js` と同じ理由＝ファイル名の
+  **UTF-8 フラグ bit 11** を確実に立てるため。立てないと Windows で `はじめる.bat` が化けて開けない）。
+  作ったあと読み返して、フラグ・中身の一覧・bat が ASCII/CRLF かを検査します
+- `--with-node <node.exe のパス>` で **Node ごと同梱**もできます。
+  🔴 ただし **node.exe の隣に Node.js の `LICENSE`（MIT）が要ります**。Windows の Node には
+  全文が入っていないので、まだ同梱していません（**配布条件と併せて本人判断待ち**）
+- `scripts/install-windows.ps1` は、同梱 node があればそちらを PATH より先に使うようにしました
+
+**実機で通しました**（Windows）: 日本語＋空白入りのフォルダに Windows の展開機能で解凍 →
+`はじめる.bat` 実行 → `/health` 200・画面・`/api/info` まで確認。文字化けなし。
+
+## 🔲 そちらに関係するところ
+
+- **この ZIP は Windows 用**です。Mac 用の起動役（`install-mac.sh`）は**入れていません**。
+  Mac 版を配るかどうかは、そちらの判断で構いません（作るなら `--target mac` を足す形が素直です）
+- 取扱説明書には「**iPhone アプリは配布していない**（App Store に出していないため）。
+  Safari から使えば同じことができる」と書きました。**そちらの成果を否定する意味ではありません。**
+  App Store／TestFlight に出す気があるなら、書き換えます
 
 # ✅ お願いされていた「置き場所の既定が Windows 専用」を直しました
 

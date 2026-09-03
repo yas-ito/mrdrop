@@ -34,6 +34,16 @@ function Test-Admin {
     [Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+# 配布物には node.exe を同梱できる（build/make-package.js --with-node）。
+# 同梱されていれば PATH より先にそちらを使う。受け取った人が Node を入れていなくても動く。
+function Get-NodePath {
+  $bundled = Join-Path $Repo "node\node.exe"
+  if (Test-Path $bundled) { return $bundled }
+  $cmd = Get-Command node -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Source }
+  return $null
+}
+
 function Get-Port {
   $cfgPath = Join-Path $Repo "config.json"
   if (Test-Path $cfgPath) {
@@ -52,8 +62,8 @@ if ($Status) {
   $port = Get-Port
   Say "置き場所 : $Repo"
   Say "番号     : $port"
-  $node = (Get-Command node -ErrorAction SilentlyContinue)
-  if ($node) { Say "Node     : $($node.Source)" } else { Warn "Node が見つかりません" }
+  $node = Get-NodePath
+  if ($node) { Say "Node     : $node" } else { Warn "Node が見つかりません" }
   foreach ($r in @($RuleTcp, $RuleUdp)) {
     if (Get-NetFirewallRule -DisplayName $r -ErrorAction SilentlyContinue) { Say "壁の穴   : $r … あり" }
     else { Warn "壁の穴   : $r … ありません" }
@@ -98,8 +108,8 @@ if ($Uninstall) {
 
 # ── 入れる ─────────────────────────────────────────────────
 if (-not (Test-Path $Entry)) { Fail "$Entry が見つかりません。" }
-$node = (Get-Command node -ErrorAction SilentlyContinue)
-if (-not $node) { Fail "Node が見つかりません。先に Node を入れてください。" }
+$node = Get-NodePath
+if (-not $node) { Fail "Node が見つかりません。先に Node を入れてください（https://nodejs.org/ja の LTS）。" }
 $port = Get-Port
 
 # 🔴 管理者が要る理由は2つ:
@@ -141,7 +151,7 @@ if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
   Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 }
 $me        = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$action    = New-ScheduledTaskAction -Execute $node.Source -Argument """$Entry""" -WorkingDirectory $Repo
+$action    = New-ScheduledTaskAction -Execute $node -Argument """$Entry""" -WorkingDirectory $Repo
 $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $me
 $principal = New-ScheduledTaskPrincipal -UserId $me -LogonType S4U -RunLevel Limited
 $set       = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
