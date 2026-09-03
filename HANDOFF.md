@@ -125,121 +125,79 @@ Mac 分岐は `process.platform` を `darwin` に差し替えて確かめまし�
 
 ## Mac → Windows
 
-**最終更新: 2026-09-03（Mac）／実機 iPhone 13 Pro Max・iOS 26.6.1・Xcode 26.6**
+**最終更新: 2026-09-03（Mac）／Mac 版アプリ完成・公証済み／iPhone アプリは App Store（無料）に決定**
 
-# ✅ **iOS アプリ、完成しました。**頼まれた4つは全部済みです
+# ✅ 本人の決定: **iPhone アプリは App Store で無料、お金は PC 側（BOOTH で有料）で取る**
 
-| そちらの確認事項 | 結果 |
-|---|---|
-| 1. ビルドが通るか | ✅ 通した（2件落ちたので直した） |
-| 2. `NWBrowser` で PC が出るか | ✅ 出る。そちらの Windows 機も一覧に出た |
-| 3. **1GB 級の動画で拡張が落ちないか** | ✅ **2.81 GB を共有シートから 76 MB/秒で送りきった。落ちない** |
-| 4. HEIC が HEIC のまま届くか | ✅ 元のまま。SHA-256 まで一致 |
+「TestFlight か App Store か」の答えです。**売り物として不特定多数に配る**ので App Store。
+Windows 版は**無署名のまま**でよい（本人判断。SmartScreen の警告は説明書で案内する形）。
+手順と審査メモの案は **`ios/APPSTORE.md`**、プライバシーポリシーは **`ios/プライバシーポリシー.md`**。
+App Store Connect の操作は本人なので**公開日は未定**。URL と版数は公開したらここに書きます。
 
-**2,808,340,601 バイトが 1 バイトも違わず届いています。**アプリ経由・共有シート経由の両方。
+# 🆕 **Mac 版の受け取りアプリができました（`Mr.Drop.app`・メニューバー常駐・公証済み）**
 
-# 🔴 いちばん大きな発見: **型を決め打ちすると、Photos は「変換して」渡してくる**
-
-そちらが `ios/` を読むとき、ここだけは知っておいてください。**元のファイルをそのまま送るには、
-こちらから型を指定してはいけません。**
-
-実測（60分・1080p30 の MP4）:
-
-| 頼み方 | 返ってきたもの |
-|---|---|
-| `com.apple.quicktime-movie` を指定 | **568×320・611 kbps** のメール用書き出し（336 MB） |
-| `public.item` を指定 | 写真が JPEG に変換される |
-| **相手が並べた順の先頭をそのまま使う** | **1920×1080 の元ファイル**（155 MB） |
-
-🔴 **「元より大きいのに画質が悪い」**という分かりにくい壊れ方をします。
-`NSItemProvider.registeredTypeIdentifiers` は**元に近い順**なので、
-`com.apple.private.photos.mail-movie-export` と `...thumbnail...` だけ外して先頭を採るのが正解。
-本体アプリの `Transferable` は静的にしか書けないので、**写真用・MOV用・MP4用に分けて**、
-項目が名乗る型（`supportedContentTypes`）で選び分けています。
-
-# 🔵 速さ（実測・Mac は有線1Gbps）
-
-| | 速さ |
-|---|---:|
-| 共有シート（バックグラウンド転送・2.81GB） | **76 MB/秒** |
-| アプリ前面（通常セッション・2.81GB） | 80 MB/秒 |
-| アプリ背面（バックグラウンド・2.81GB） | 60 MB/秒 |
-
-**AirDrop と同じ土俵**です。`URLSessionConfiguration.background` は OS が抑えるので、
-アプリを開いている間は通常のセッションに切り替えてあります。
-
-# 🔵 実機でしか分からなかったこと（ユーザー体験の話）
-
-- **動画が iCloud に退避されていると、初回の取り込みに時間がかかる**（7MB の動画で 99 秒。
-  同じ動画の2回目は 1 秒）。**大きさではなく「端末に実体があるか」で決まる**
-- 進み具合を出さないと「押しても無反応」に見え、**途中でアプリを閉じてやり直してしまう**
-  （記録に 15〜60 秒で終了が並んだ）。→ **取り込みの％を出す**ようにした
-- そちらが踏んだ「送れているのに伝わらない」と**同じ穴**でした。ブラウザ画面のほうも、
-  時間のかかる処理には進み具合を出しておくと同じ事故を防げます
-
-# 🔵 端末の中の記録の読み方（そちらでは使えませんが、参考まで）
-
-`MrDrop.log` が App Group と Documents の両方に書きます。Mac からはこれで取り出します:
-
-```
-xcrun devicectl device copy from --device <UDID> \
-  --domain-type appDataContainer --domain-identifier jp.yastools.mrdrop \
-  --source Documents/mrdrop.log --destination ./mrdrop.log
-```
-
-🔴 `--destination` に**ファイル名まで書かないと黙って失敗**します。
-🔴 App Group の中身は `appGroupDataContainer` からは見えません（実測）。
-
-# 🆕 「PC で扱いやすい形式にする」を足しました（既定は切）
-
-本人の用途が **Windows で扱う／YouTube に上げる**だったため。入にすると:
-
-| | 切（既定） | 入 |
-|---|---|---|
-| 写真 | HEIC のまま | **JPEG**（実測 4032×3024 のまま・縮小なし） |
-| 動画 | MOV のまま | **MP4**（`AVAssetExportPresetPassthrough` で容器の詰め替えのみ） |
-
-**実測: 49,945,088 バイトの `.mov` が 49,956,307 バイトの `.mp4` に。**ほぼ同じ＝作り直していません。
-中身は H.264 のままなので、Windows でもそのまま再生でき、YouTube の推奨形式にもなります。
-
-🔴 **共有シートから送るときは写真だけ JPEG で、動画はそのまま**です。
-メモリ 120MB の拡張で詰め替えを走らせると落ちるため、**動画の変換はアプリからのみ**。
-
-# 🆕 アプリアイコンを入れました
-
-青い雫に下向きの矢印（＝PC へ送る）。**生成元は `ios/アイコン/_生成元/`**
-（HTML を Chrome headless で 1024px に焼く方式・**PNG は直接加工しない**）。
-`icon-final.py` の数値を変えて作り直せます。
-
-🔴 **`project.yml` を機械的に置換するときは前方一致に注意。**
-`PRODUCT_BUNDLE_IDENTIFIER: jp.yastools.mrdrop` を置換したら、
-`....mrdrop.ShareExtension` の行まで巻き込んで書き換わり、
-**`DuplicateIdentifier` で端末に入らなくなりました**（原因が分かりにくい）。
-
-# 🆕 Mac 用の常駐を作りました（`scripts/install-mac.sh`）
-
-そちらの「まだ手を付けていないこと」にあった Mac 版です。`launchd` でログイン時に立ち上げます。
+そちらの「Mac 版を配るかどうかはそちらの判断」への答えです。**配ります。**
+Windows の `はじめる.bat` に当たるものが、Mac では `Mr.Drop.app` です。
 
 ```bash
-bash scripts/install-mac.sh              # 入れる
-bash scripts/install-mac.sh --uninstall  # 外す
+bash build/make-mac-app.sh                # 作る → 署名 → 公証 → zip（数分）
+bash build/make-mac-app.sh --no-notarize  # 手元確認だけ（配ってはいけない）
 ```
 
-- **受信箱は `~/Downloads/受信箱`**（`MRDROP_INBOX` で変えられます）。
-  🔴 `~/Desktop` は **iCloud 同期の対象**なので避けました。数GB の動画が iCloud に上がってしまいます
-- 既定値が Windows 表記のままなので、**このスクリプトが `config.json` を作って逃げています**
-  （下の「お願い」が直れば不要になります）
-- 常駐中の実測: **メモリ 53MB・CPU 0.0%**（待機時）
+- できる物: `_build/MrDrop_v1.0.0_mac.zip`（**80MB**・中身は .app 1つ）。展開してダブルクリックするだけ
+- **Node を同梱**（nodejs.org 公式 v24.20.0・arm64＋Intel の universal・SHASUMS256 で検算）。
+  🔴 **Homebrew の node は持ち出せません**（Homebrew のライブラリに依存・実測）。
+  そちらの `--with-node` と同じ考え方で、Node.js の LICENSE も同梱しています
+- 🔴 **`make-package.js` に `--target mac` は足しませんでした。**.app は実行権限と署名を保って zip に
+  する必要があり、自前 zip では壊れるため。Mac は `ditto` で作る別スクリプトです
+- サーバーは `server/` の JS をそのまま同梱（`Contents/Resources/server/`）。**Mac 側に転送ロジックは書いていません**
+- メニュー: 状態／iPhone の Safari で開く住所（押すとコピー）／受信箱を開く／受信箱を変える／合言葉／記録を開く／ログイン時に起動／終了
+- 設定 `~/Library/Application Support/Mr.Drop/config.json`（サーバーが既定で作る）、記録 `~/Library/Logs/MrDrop/mrdrop.log`
+- 実機（Mac mini・macOS 26）で通した: 起動 → 48630 で待つ → `/health` `/api/info` OK → 通常終了で親子とも消える
+  → **kill -9 でも node が残らない** → 公証 Accepted → zip から出し直して署名・staple とも無事
 
-# 🔲 そちらへのお願い（据え置き）
+# 🔴 `server/` を 2 か所だけ触りました（そちらの領分ですが、Mac 版に要るので）
 
-`server/lib/config.js` の既定の受信箱 `%USERPROFILE%\\Desktop\\受信箱` は **Mac で展開されません**。
-Mac でも動くと謳うなら分岐が要ります（そちらの領分なので触っていません）。
+1. **`mrdrop.js` の記録の置き場所を Mac だけ `~/Library/Logs/MrDrop` に**（`process.platform === "darwin"` の分岐）。
+   Windows は今までどおり `%LOCALAPPDATA%\MrDrop`。理由: Mac の tmpdir は 3 日で掃除され、問い合わせのときに読めない
+2. **`--follow-stdin` を足した**（stdin が閉じたら `bye()`）。Mac 版アプリが子プロセスとして回すときだけ付ける。
+   既定では stdin を読まない（タスクスケジューラ起動の罠を避けるため）。
+   **`server/test/follow.test.js` で固定**（本物の入口を別プロセスで立て、stdin を閉じたら 4 秒以内に終わるか）。
+   Mac で **108 件全部通っています**。🔴 **Windows 実機でも `node server/test/run.js` を通してください**
+   （spawn と stdin パイプは OS 依存の可能性があるところ）
 
-# 🔲 まだ手を付けていないこと（iOS 側）
+# ✅ お願いされていた `install-mac.sh` の実機確認、通りました
 
-- **PC → iPhone** はブラウザ画面からのみ（アプリ側は未実装）。そちらの分担のまま
-- 共有拡張には進み具合の表示が無い（メモリの都合で最小限にしてあります）
+`config.json` を退避してから `bash scripts/install-mac.sh` → `mrdrop.out.log` の受信箱の行は
+**`/Users/yas/Downloads/受信箱`**。リポジトリ直下に `%USERPROFILE%` のフォルダは**できていません**。
+できた `config.json` は `~/Downloads/受信箱` 表記（サーバーの既定）。**そちらの直しは Mac で正しく動いています。**
+
+# 🆕 iOS 側に 3 つ足しました（シミュレータで確認・実機 iPhone は未）
+
+1. **PC が見つからないときの案内**（6 秒たっても見つからなければ理由と手立てを出す）… 審査対策と購入者の親切の両方。
+   🔴 **画面では未確認**（同じ LAN にそちらの Windows 機「yas」がいて必ず見つかるため。ビルドは通っている）
+2. **住所の手入力**（「住所を手で入れる…」の行がいつでも出ている。`192.168.1.20:48630` や `http://…` を入れて「つなぐ」
+   → `/api/info` で確かめてから送り先にする。見つからないまま 6 秒たてば入力欄が自動で開く）
+   … ゲスト Wi-Fi や AP 隔離で Bonjour が通らないときの逃げ道。**そちらの「見つからない」問い合わせの答えにも使えます**。
+   シミュレータで、mDNS を出さない偽の PC（48631）に対して**送り先に加わるところまで確認済み**
+3. **合言葉の入力欄**（PC 側で token を決めた人向け。今まで入れる場所が無かった）
+
+🔴 アプリの中に「PC 版を買う」導線は置いていません（App Store 3.1.1）。案内は「PC 版が動いている必要がある」と事実だけ
+
+# 🔲 そちらへのお願い
+
+- 取扱説明書の「iPhone アプリはありますか」は **App Store 公開まで今のまま**で構いません。公開したら URL を渡します
+- Mac 版の取扱説明書は**こちらで書きます**（`取扱説明書.html` は Windows 向けのまま触りません）
+- Windows の配布 ZIP に `--with-node` を付けるか（LICENSE 同梱）は**本人判断待ちのまま**。
+  Mac 版は同梱したので、揃えるなら Windows も同梱が自然です
+
+# 🔲 まだ手を付けていないこと
+
+- **App Store Connect の登録・提出**（本人の操作。手順は `ios/APPSTORE.md`）
+- 手入力・合言葉の**実機 iPhone での確認**
+- Mac 版の**他の Mac での確認**（Intel 機、macOS 15 以降の「ローカルネットワーク」許可ダイアログの出方）
+- Mac 版の取扱説明書
+- **PC → iPhone** はブラウザ画面からのみ（そちらの分担のまま）
 
 ---
 
