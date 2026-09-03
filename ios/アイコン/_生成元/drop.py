@@ -18,15 +18,22 @@ def drop_path(cx, cy, r, height, bulge=0.0):
         left  = f"L {p1[0]:.1f} {p1[1]:.1f}"
         right = f"L {ax:.1f} {ay:.1f}"
     else:
-        # 接線の中点を外へ押し出した二次ベジエ。接点での向きは接線のまま
-        def ctrl(p):
-            mx, my = (ax + p[0]) / 2, (ay + p[1]) / 2
-            nx, ny = (mx - cx), (my - cy)
+        # 🔴 ふくらませても、**接点では接線の向きを保つ**こと。
+        #    外へ押し出すだけだと肩に折れ目が出る（実際に出た）。
+        #    → 接点側の制御点は A→T の直線上に置き、先端側だけ外へ振る。
+        def ctrls(p):
+            dx, dy = p[0] - ax, p[1] - ay
+            nx, ny = -dy, dx                      # 接線に垂直な向き
             n = math.hypot(nx, ny) or 1
-            return (mx + nx / n * bulge, my + ny / n * bulge)
-        c1, c2 = ctrl(p1), ctrl(p2)
-        left  = f"Q {c1[0]:.1f} {c1[1]:.1f} {p1[0]:.1f} {p1[1]:.1f}"
-        right = f"Q {c2[0]:.1f} {c2[1]:.1f} {ax:.1f} {ay:.1f}"
+            side = 1 if p[0] < cx else -1          # 左右それぞれ外向きへ
+            c1 = (ax + dx * 0.38 + nx / n * bulge * side,
+                  ay + dy * 0.38 + ny / n * bulge * side)
+            c2 = (ax + dx * 0.74, ay + dy * 0.74)  # 直線上＝接点で接する
+            return c1, c2
+        a1, a2 = ctrls(p1)
+        b1, b2 = ctrls(p2)
+        left  = f"C {a1[0]:.1f} {a1[1]:.1f} {a2[0]:.1f} {a2[1]:.1f} {p1[0]:.1f} {p1[1]:.1f}"
+        right = f"C {b2[0]:.1f} {b2[1]:.1f} {b1[0]:.1f} {b1[1]:.1f} {ax:.1f} {ay:.1f}"
     # 先端 → 左の接点 → 下側の円弧 → 右の接点 → 先端
     return (f"M {ax:.1f} {ay:.1f} {left} "
             f"A {r} {r} 0 1 0 {p2[0]:.1f} {p2[1]:.1f} {right} Z")

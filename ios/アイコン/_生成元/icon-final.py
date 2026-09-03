@@ -7,10 +7,11 @@ from drop import drop_path
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 OUT = os.path.abspath("../AppIcon.png")
 
-CX, CY, R = 512, 566, 204          # 雫の丸い部分
-DROP = drop_path(CX, CY, R, 442, bulge=30)
-AY = CY - 4                        # 矢印の中心。丸い部分の中に収める
-LEN, HALF = 116, 72                # 矢羽根の長さと開き
+# 大きく・丸く。height/R を小さくするほど先が丸くなる（2.2→1.8）
+CX, CY, R = 512, 596, 252
+DROP = drop_path(CX, CY, R, 452, bulge=46)
+AY = CY - 6                        # 矢印の中心。丸い部分の中に収める
+LEN, HALF = 140, 88                # 矢羽根の長さと開き
 
 HTML = f"""<!doctype html><meta charset="utf-8">
 <style>html,body{{margin:0;width:1024px;height:1024px;overflow:hidden}}
@@ -21,7 +22,7 @@ svg{{position:absolute;inset:0;width:1024px;height:1024px}}</style>
   <div class="bg"></div>
   <svg viewBox="0 0 1024 1024">
     <path d="{DROP}" fill="#1F6FEB"/>
-    <g stroke="#fff" stroke-width="46" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <g stroke="#fff" stroke-width="54" stroke-linecap="round" stroke-linejoin="round" fill="none">
       <path d="M {CX} {AY-LEN} V {AY+LEN}"/>
       <path d="M {CX-HALF} {AY+LEN-HALF} L {CX} {AY+LEN} L {CX+HALF} {AY+LEN-HALF}"/>
     </g>
