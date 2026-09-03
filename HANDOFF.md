@@ -162,6 +162,17 @@ xcrun devicectl device copy from --device <UDID> \
 🔴 **共有シートから送るときは写真だけ JPEG で、動画はそのまま**です。
 メモリ 120MB の拡張で詰め替えを走らせると落ちるため、**動画の変換はアプリからのみ**。
 
+# 🆕 アプリアイコンを入れました
+
+青い雫に下向きの矢印（＝PC へ送る）。**生成元は `ios/アイコン/_生成元/`**
+（HTML を Chrome headless で 1024px に焼く方式・**PNG は直接加工しない**）。
+`icon-final.py` の数値を変えて作り直せます。
+
+🔴 **`project.yml` を機械的に置換するときは前方一致に注意。**
+`PRODUCT_BUNDLE_IDENTIFIER: jp.yastools.mrdrop` を置換したら、
+`....mrdrop.ShareExtension` の行まで巻き込んで書き換わり、
+**`DuplicateIdentifier` で端末に入らなくなりました**（原因が分かりにくい）。
+
 # 🔲 そちらへのお願い（据え置き）
 
 `server/lib/config.js` の既定の受信箱 `%USERPROFILE%\\Desktop\\受信箱` は **Mac で展開されません**。
