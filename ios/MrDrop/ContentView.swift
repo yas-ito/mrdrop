@@ -86,6 +86,11 @@ struct ContentView: View {
     @State private var showFiles = false
     @State private var message: String?
     @State private var convertForPC = MrDrop.convertForPC
+    @State private var token = MrDrop.token
+    @State private var noPeerHint = false          // 探し始めて数秒たっても見つからない
+    @State private var manualAddress = ""          // 手で入れる住所（192.168.1.20:48630）
+    @State private var manualBusy = false
+    @State private var showManual = false          // 「住所を手で入れる」を開いているか
 
     var body: some View {
         NavigationStack {
@@ -96,6 +101,7 @@ struct ContentView: View {
                 peerSection
                 sendSection
                 formatSection
+                tokenSection
             }
             .navigationTitle("Mr.Drop")
             .onAppear { discovery.start() }
@@ -108,6 +114,13 @@ struct ContentView: View {
         }
     }
 
+    /// 手で入れた PC（自動発見の一覧に無いもの）。前回の PC が今いない場合もここに来る
+    private var manualPeer: MrDrop.Peer? {
+        guard let p = peer, !discovery.peers.contains(p) else { return nil }
+        return p
+    }
+    private var listedPeers: [MrDrop.Peer] { discovery.peers + (manualPeer.map { [$0] } ?? []) }
+
     private var peerSection: some View {
         Section {
             if discovery.peers.isEmpty {
@@ -115,8 +128,15 @@ struct ContentView: View {
                     ProgressView()
                     Text("同じ Wi-Fi の PC を探しています…").foregroundStyle(.secondary)
                 }
+                // 🔴 黙って探し続けるだけにしない。受け取る側の PC が無い人（審査官もそう）には
+                //    「何も起きないアプリ」に見える。数秒で理由と手立てを出す
+                .task {
+                    try? await Task.sleep(for: .seconds(6))
+                    noPeerHint = true
+                }
+                if noPeerHint { noPeerGuide }      // 前回の PC が残っていても、自動で見つからない限り出す
             }
-            ForEach(discovery.peers) { p in
+            ForEach(listedPeers) { p in
                 Button {
                     peer = p
                     MrDrop.lastPeer = p
@@ -124,7 +144,8 @@ struct ContentView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(p.name)
-                            Text("\(p.host):\(String(p.port))")
+                            Text("\(p.host):\(String(p.port))" +
+                                 (discovery.peers.contains(p) ? "" : "　自動発見では見つかっていません"))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -136,10 +157,96 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
             }
+            manualEntry
         } header: {
             Text("送り先の PC")
         } footer: {
             Text("見つからないときは、PC で Mr.Drop が動いているか、同じ Wi-Fi につながっているかを確かめてください。")
+        }
+    }
+
+    /// PC が見つからないときの案内。
+    /// 🔴 アプリの中に「PC 版を買う」導線は置かない（App Store の 3.1.1 に触れる）。事実だけ言う。
+    private var noPeerGuide: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("見つからないときは").font(.subheadline.bold()).foregroundStyle(.primary)
+            Text("• 受け取る側のパソコンで **Mr.Drop（PC 版）** が動いている必要があります")
+            Text("• iPhone とパソコンが同じ Wi-Fi につながっているか確かめてください")
+            Text("• iPhone の「設定 › プライバシーとセキュリティ › ローカルネットワーク」で Mr.Drop が許可されているか")
+            Text("• それでも出ないときは、PC の画面に出ている住所を下に入れてください")
+        }
+        .font(.footnote).foregroundStyle(.secondary)
+    }
+
+    /// 住所を手で入れる口。いつでも使える（見つかった PC が違う・別のサブネットにいる、など）。
+    /// 見つからないまま数秒たったら自動で開く。
+    private var manualEntry: some View {
+        Group {
+            if showManual || (noPeerHint && discovery.peers.isEmpty) {
+                HStack {
+                    TextField("例: 192.168.1.20:48630", text: $manualAddress)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .onSubmit { Task { await connectManually() } }
+                    Button(manualBusy ? "確かめています…" : "つなぐ") { Task { await connectManually() } }
+                        .disabled(manualBusy || manualAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } else {
+                Button { showManual = true } label: { Label("住所を手で入れる…", systemImage: "keyboard") }
+            }
+        }
+    }
+
+    /// 手で入れた住所を確かめてから送り先にする。
+    /// `http://192.168.1.20:48630` でも `192.168.1.20:48630` でも `my-pc.local` でも通す。
+    private func connectManually() async {
+        var s = manualAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let r = s.range(of: "://") { s = String(s[r.upperBound...]) }
+        if let i = s.firstIndex(of: "/") { s = String(s[..<i]) }
+        var host = s
+        var port = 48630
+        if let i = s.lastIndex(of: ":"), let p = Int(s[s.index(after: i)...]) {
+            host = String(s[..<i])
+            port = p
+        }
+        guard !host.isEmpty, let url = URL(string: "http://\(host):\(port)/api/info") else {
+            message = "住所の形が違います。例: 192.168.1.20:48630"
+            return
+        }
+        manualBusy = true
+        defer { manualBusy = false }
+        do {
+            var req = URLRequest(url: url)
+            req.timeoutInterval = 5
+            let (data, _) = try await URLSession.shared.data(for: req)
+            let info = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            guard info?["app"] as? String == "mrdrop" else {
+                message = "その住所に Mr.Drop はいませんでした。"
+                return
+            }
+            let p = MrDrop.Peer(name: (info?["name"] as? String) ?? host, host: host, port: port)
+            peer = p
+            MrDrop.lastPeer = p
+            manualAddress = ""
+            showManual = false
+            MrDrop.log("アプリ", "手入力で送り先を決めた \(host):\(port)")
+        } catch {
+            MrDrop.log("アプリ", "手入力の住所につながらない \(host):\(port) \(MrDrop.describe(error))")
+            message = "つながりませんでした。PC で Mr.Drop が動いているか、同じ Wi-Fi かを確かめてください。"
+        }
+    }
+
+    private var tokenSection: some View {
+        Section {
+            TextField("合言葉（PC 側で決めたもの）", text: $token)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .onChange(of: token) { _, v in MrDrop.token = v.trimmingCharacters(in: .whitespaces) }
+        } header: {
+            Text("合言葉")
+        } footer: {
+            Text("PC 側の Mr.Drop で合言葉を決めたときだけ入れます。空のままなら合言葉なしで送ります。")
         }
     }
 
