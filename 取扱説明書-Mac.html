@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Mr.Drop for Mac v1.0.0 取扱説明書</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #fff;
+    line-height: 1.85;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 0 0 24mm;
+    position: relative;
+  }
+
+  .cover-header {
+    background: #0b0d12;
+    color: #fff;
+    padding: 18mm 18mm 12mm;
+    margin-bottom: 10mm;
+  }
+  .cover-logo { font-size: 32px; font-weight: 900; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .cover-logo span { color: #4d84ff; }
+  .cover-version { font-size: 13px; color: #aaa; letter-spacing: 0.08em; }
+  .cover-tagline { font-size: 14px; color: #ccc; margin-top: 10px; font-weight: 400; }
+  .cover-badge {
+    display: inline-block; margin-top: 10px; padding: 3px 10px;
+    background: #4d84ff; color: #fff; font-size: 11px; font-weight: bold;
+    border-radius: 12px; letter-spacing: 0.04em;
+  }
+
+  .content { padding: 0 18mm; }
+
+  h2 {
+    font-size: 15px; font-weight: bold; margin: 24px 0 10px;
+    padding: 6px 10px; background: #f0f0f0;
+    border-left: 4px solid #4d84ff; letter-spacing: 0.03em;
+  }
+  h3 { font-size: 13px; font-weight: bold; margin: 16px 0 6px; color: #222; }
+
+  p { margin-bottom: 8px; }
+  ul, ol { margin: 6px 0 10px 18px; }
+  li { margin-bottom: 5px; }
+  strong { font-weight: bold; }
+
+  .quickstart {
+    border: 1px solid #4d84ff; border-radius: 5px;
+    padding: 12px 14px 8px; margin: 12px 0 16px; background: #f5f8ff;
+  }
+  .quickstart-title { font-weight: bold; font-size: 12px; color: #2f6df6; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .quickstart ol { margin-left: 16px; }
+
+  .caution {
+    border: 1px solid #e0a84d; border-radius: 4px;
+    padding: 10px 14px; background: #fffbf0; margin: 10px 0 14px;
+  }
+  .caution-title { font-weight: bold; font-size: 12px; color: #b07a00; margin-bottom: 6px; }
+
+  .good {
+    border: 1px solid #4db87a; border-radius: 4px;
+    padding: 10px 14px; background: #f3fbf6; margin: 10px 0 14px;
+  }
+  .good-title { font-weight: bold; font-size: 12px; color: #2f8f5c; margin-bottom: 6px; }
+
+  code {
+    font-family: "Menlo", "Consolas", monospace;
+    background: #ececec; padding: 1px 5px; border-radius: 3px; font-size: 11.5px;
+  }
+  pre {
+    font-family: "Menlo", "Consolas", monospace; font-size: 11.5px;
+    background: #16181d; color: #e8eaf0; padding: 10px 14px; border-radius: 5px;
+    margin: 8px 0 12px; line-height: 1.6; overflow-x: auto;
+  }
+
+  .hint {
+    font-size: 11.5px; color: #555; background: #f7f7f7;
+    border-left: 3px solid #bbb; padding: 6px 10px; margin: 6px 0 12px;
+    border-radius: 0 3px 3px 0;
+  }
+
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; font-size: 12px; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f4f5f8; font-weight: bold; white-space: nowrap; }
+
+  .qa-item { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e8e8e8; }
+  .qa-item:last-child { border-bottom: none; }
+  .qa-q { font-weight: bold; color: #1a1a1a; margin-bottom: 4px; padding-left: 20px; position: relative; }
+  .qa-q::before { content: "Q."; position: absolute; left: 0; color: #4d84ff; font-weight: 900; }
+  .qa-a { padding-left: 20px; color: #333; position: relative; }
+  .qa-a::before { content: "A."; position: absolute; left: 0; color: #888; font-weight: bold; }
+
+  .env-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .env-badge { background: #0b0d12; color: #fff; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: bold; }
+
+  .steps { display: flex; flex-direction: column; gap: 14px; margin: 10px 0 16px; }
+  .step-row { display: flex; align-items: flex-start; gap: 12px; }
+  .step-num {
+    flex-shrink: 0; width: 22px; height: 22px; background: #4d84ff; color: #fff;
+    font-size: 11px; font-weight: 900; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-label { font-weight: bold; font-size: 12.5px; margin-bottom: 6px; color: #222; }
+
+  .win-file {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #f3f3f3; border: 1px solid #ccc; border-radius: 4px;
+    padding: 6px 12px; font-size: 12px; color: #111;
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  .win-file-icon { font-size: 18px; }
+
+  .footer {
+    position: absolute; bottom: 10mm; left: 18mm; right: 18mm;
+    display: flex; justify-content: space-between;
+    font-size: 10.5px; color: #999; border-top: 1px solid #e0e0e0; padding-top: 5px;
+  }
+
+  .page-break { page-break-after: always; }
+
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; }
+    .page-break { page-break-after: always; }
+  }
+
+  @page { size: A4; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- ════ PAGE 1 ════ -->
+<div class="page">
+  <div class="cover-header">
+    <div class="cover-logo">Mr.<span>Drop</span> <span style="font-size:18px;color:#aaa;font-weight:400">for Mac</span></div>
+    <div class="cover-version">version 1.0.0 — 取扱説明書</div>
+    <div class="cover-tagline">iPhone から、同じ Wi-Fi の Mac へ。写真も動画も、そのまま。</div>
+    <div class="cover-badge">macOS 13 以降 / Apple シリコン・Intel 両対応 / インターネットを通りません</div>
+  </div>
+
+  <div class="content">
+
+    <div class="quickstart">
+      <div class="quickstart-title">まず、これだけ</div>
+      <ol>
+        <li>ZIP をダブルクリックして展開し、出てきた <strong>Mr.Drop</strong> を「アプリケーション」フォルダへ入れる</li>
+        <li><strong>Mr.Drop</strong> をダブルクリック。メニューバー（画面の上）に <strong>雫のアイコン</strong> が出ます</li>
+        <li>「ローカルネットワーク」の許可を聞かれたら <strong>「許可」</strong></li>
+        <li>iPhone の <strong>Mr.Drop アプリ</strong>（または Safari）から送る。選んだ瞬間に Mac へ届きます</li>
+      </ol>
+    </div>
+
+    <h2>このツールについて</h2>
+    <p>Mr.Drop は、<strong>iPhone から、同じ Wi-Fi につながっている Mac へファイルを送る</strong>道具です。
+       AirDrop と同じ使い心地を、Windows と Mac の両方で同じように使えるようにしたものです。</p>
+    <ul>
+      <li><strong>インターネットを通りません。</strong>端末どうしが直接やりとりします。写真がどこかのサーバーに残ることはありません</li>
+      <li><strong>元のまま届きます。</strong>HEIC が JPEG に変換されたり、動画が小さくされたりしません（iPhone 側で「PC で扱いやすい形式」を選んだときだけ、JPEG / MP4 にして送ります）</li>
+      <li><strong>メニューバーに常駐するだけ。</strong>Dock にも出ませんし、ウインドウもありません</li>
+      <li><strong>Mac → iPhone もできます。</strong>Mac の「送信箱」に入れたものを、iPhone の Safari から受け取れます</li>
+    </ul>
+    <div class="hint">追加のソフトは何も要りません。必要なものは全部 Mr.Drop の中に入っています。</div>
+
+    <h2>始める</h2>
+    <div class="steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-label">Mr.Drop を「アプリケーション」に入れてダブルクリック</div>
+          <p>初めて開くときは「インターネットからダウンロードされたアプリケーションです。開いてもよろしいですか？」と聞かれます。
+             <strong>「開く」</strong>を押してください。Apple の公証を通してあるので、「開発元を確認できません」とは言われません。</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-label">「ローカルネットワーク上のデバイスの検索と接続を許可しますか」と聞かれたら</div>
+          <p><strong>「許可」</strong>を押してください。ここで断ると、iPhone から Mac が見えません。
+             あとから直すには、システム設定 →「プライバシーとセキュリティ」→「ローカルネットワーク」で Mr.Drop をオンにします。</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-label">メニューバーの雫を押す</div>
+          <p>「<strong>待っています</strong>」と出ていれば準備完了です。その下に、iPhone の Safari で開ける住所が並びます
+             （押すとコピーされます）。iPhone アプリを使うなら、住所は要りません。<strong>アプリが勝手に Mac を見つけます。</strong></p>
+          <pre>  Mr.Drop 1.0.0：待っています
+  ─────────────────────────────
+  iPhone の Safari で開く住所（押すとコピー）
+      http://my-mac.local:48630
+      http://192.168.1.20:48630
+  ─────────────────────────────
+  受信箱を開く            ⌘O
+  受信箱を変える…
+  合言葉を決める…
+  記録を開く
+  ログイン時に起動
+  ─────────────────────────────
+  Mr.Drop を終了          ⌘Q</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="footer">
+    <span>Mr.Drop for Mac v1.0.0 取扱説明書</span><span>1 / 3</span><span>© 2026</span>
+  </div>
+</div>
+<div class="page-break"></div>
+
+<!-- ════ PAGE 2 ════ -->
+<div class="page">
+  <div class="content" style="padding-top:18mm">
+
+    <h2>送る・受け取る</h2>
+
+    <h3>iPhone → Mac（送る）</h3>
+    <p><strong>iPhone アプリ</strong>なら、写真アプリの共有ボタンに「Mr.Drop」が並びます。AirDrop と同じ操作です。
+       アプリを開いて「写真・動画を送る」からも送れます。</p>
+    <p><strong>Safari</strong> なら、メニューに出ている住所を開いて「写真・動画を選ぶ」を押します。</p>
+    <div class="caution">
+      <div class="caution-title">⚠ 送信ボタンはありません</div>
+      <p><strong>選んだ瞬間に送り始めます。</strong>「送信」ボタンを探す必要はありません。
+         棒グラフが伸びて「送りました」に変われば完了です。何度も選び直すと、同じ写真が何枚も届きます。</p>
+    </div>
+    <p>届いたものは Mac の<strong>受信箱</strong>に入ります。初期設定では「ダウンロード」の中の「受信箱」フォルダです。
+       メニューの「受信箱を開く」で開けます。</p>
+
+    <h3>Mac → iPhone（受け取る）</h3>
+    <p>Mac の<strong>送信箱</strong>フォルダ（「ダウンロード」の中の「送信箱」）に入れたファイルが、iPhone の Safari の画面の下の方に一覧で出ます。
+       「受け取る」を押すと iPhone に落ちます。</p>
+
+    <h3>大きい動画を送るとき</h3>
+    <ul>
+      <li>数GB の動画でも送れます。速さは Wi-Fi 次第です（有線の Mac 相手なら、実測で毎秒 60〜80MB 出ています）</li>
+      <li><strong>途中で切れたファイルは受信箱に出しません。</strong>中途半端なファイルが紛れ込まないようにしてあります。切れたら、もう一度送ってください</li>
+      <li>iPhone アプリなら、送っている間に画面を閉じても続きます（共有シートから送ったとき）</li>
+    </ul>
+
+    <h2>安全の話（読んでください）</h2>
+    <div class="caution">
+      <div class="caution-title">⚠ 同じ Wi-Fi にいる人は、誰でも使えます</div>
+      <p>初期設定では、<strong>同じネットワークの中にいる人なら誰でも</strong>あなたの Mac へファイルを送れ、
+         <strong>送信箱の中身を見て受け取れます</strong>。家の Wi-Fi なら問題になりませんが、
+         <strong>職場・学校・宿・カフェなど、知らない人が同じ Wi-Fi にいる場所では使わないでください。</strong></p>
+    </div>
+    <ul>
+      <li>インターネット側からは使えません。<strong>同じネットワークの中からしか受け付けない</strong>作りになっています</li>
+      <li><strong>受信箱と送信箱の外には、絶対に書き込みません。</strong>ファイル名に細工がされていても、名前だけを取り出して受信箱に入れます</li>
+    </ul>
+
+    <h3>合言葉をつける</h3>
+    <p>どうしても人の多いネットワークで使うなら、合言葉を設定してください。</p>
+    <ol>
+      <li>メニューの「<strong>合言葉を決める…</strong>」を押して、好きな言葉を入れます</li>
+      <li>iPhone アプリなら「合言葉」の欄に同じ言葉を入れます</li>
+      <li>Safari からは <code>http://…:48630/?t=すきな合言葉</code> で開きます</li>
+    </ol>
+
+    <h2>置き場所と設定</h2>
+    <table>
+      <tr><th>やりたいこと</th><th>やり方</th></tr>
+      <tr><td>受信箱を別のフォルダにする</td><td>メニューの「<strong>受信箱を変える…</strong>」でフォルダを選ぶ</td></tr>
+      <tr><td>Mac にログインしたら勝手に動かす</td><td>メニューの「<strong>ログイン時に起動</strong>」にチェック</td></tr>
+      <tr><td>何が起きたか見る</td><td>メニューの「<strong>記録を開く</strong>」。お問い合わせのときは、この中身を送ってください</td></tr>
+      <tr><td>番号（48630）や名前を変える</td><td><code>~/Library/Application Support/Mr.Drop/config.json</code> をテキストエディタで直して、Mr.Drop を入れ直す</td></tr>
+    </table>
+    <div class="good">
+      <div class="good-title">✓ 使い道のひとつ</div>
+      <p>受信箱を<strong>動画編集の素材フォルダ</strong>にしておくと、iPhone で撮った素材が、
+         そのまま編集用のフォルダに落ちてきます。取り込みの手間がまるごと無くなります。</p>
+    </div>
+    <div class="hint">受信箱の初期値を「ダウンロード」にしてあるのは、「デスクトップ」と「書類」が iCloud Drive の同期対象になっていることが多く、
+      数GB の動画が勝手に iCloud へ上がってしまうためです。</div>
+
+  </div>
+  <div class="footer">
+    <span>Mr.Drop for Mac v1.0.0 取扱説明書</span><span>2 / 3</span><span>© 2026</span>
+  </div>
+</div>
+<div class="page-break"></div>
+
+<!-- ════ PAGE 3 ════ -->
+<div class="page">
+  <div class="content" style="padding-top:18mm">
+
+    <h2>よくある質問</h2>
+
+    <div class="qa-item">
+      <div class="qa-q">iPhone から Mac が見つかりません</div>
+      <div class="qa-a">上から順に確かめてください。<br>
+        ① メニューバーに雫が出ていて「待っています」になっているか<br>
+        ② iPhone と Mac が<strong>同じ Wi-Fi</strong> か（Mac が有線でも、同じルータなら大丈夫です）<br>
+        ③ Mac の「システム設定 → プライバシーとセキュリティ → ローカルネットワーク」で Mr.Drop がオンか<br>
+        ④ iPhone の「設定 → プライバシーとセキュリティ → ローカルネットワーク」で Mr.Drop がオンか<br>
+        それでも駄目なら、iPhone アプリの「<strong>住所を手で入れる…</strong>」に、メニューに出ている <code>http://192.168.…:48630</code> を入れてください。
+        宿やカフェの Wi-Fi は端末どうしの通信を止めていることがあり、その場合は使えません。</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">「番号が塞がっています」と出ます</div>
+      <div class="qa-a">Mr.Drop が二重に動いているか、別のソフトが 48630 番を使っています。一度「Mr.Drop を終了」してから開き直してください。</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">iPhone アプリはありますか</div>
+      <div class="qa-a">App Store で<strong>無料</strong>で公開する準備をしています（Mr.Drop で検索）。公開までは、Safari で住所を開けば同じことができます。
+        共有ボタン →「ホーム画面に追加」しておくと、次からアプリのように開けます。</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">「開発元を確認できないため開けません」と出ます</div>
+      <div class="qa-a">この版では出ないはずです。出た場合は、ZIP を展開し直して、Mr.Drop を右クリック →「開く」を試してください。それでも出るときはご連絡ください。</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">受信箱にファイルが出てきません</div>
+      <div class="qa-a">iPhone 側で「送りました」になっているか確かめてください。途中で切れたものは受信箱に出さない作りです。
+        メニューの「記録を開く」で、届いたかどうかが分かります。</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">終了するには</div>
+      <div class="qa-a">メニューバーの雫 →「Mr.Drop を終了」。受け取りも止まります。</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">Windows でも使えますか</div>
+      <div class="qa-a">Windows 版があります（別売）。iPhone アプリは同じものが両方に送れます。</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q">アンインストールするには</div>
+      <div class="qa-a">「Mr.Drop を終了」してから、アプリケーションフォルダの Mr.Drop をゴミ箱へ。設定は
+        <code>~/Library/Application Support/Mr.Drop</code>、記録は <code>~/Library/Logs/MrDrop</code> に残るので、要らなければ消してください。
+        受信箱の中身は消えません。</div>
+    </div>
+
+    <h2>動作環境</h2>
+    <div class="env-list">
+      <span class="env-badge">macOS 13 Ventura 以降</span>
+      <span class="env-badge">Apple シリコン / Intel</span>
+      <span class="env-badge">iPhone: iOS 17 以降（アプリ）または Safari</span>
+    </div>
+    <p>iPhone と Mac が同じ Wi-Fi（同じルータ）につながっている必要があります。</p>
+
+    <h2>更新履歴</h2>
+    <h3>v1.0.0</h3>
+    <ul><li>最初の版</li></ul>
+
+    <h2>免責事項</h2>
+    <p>本ソフトウェアの使用によって生じたいかなる損害についても、作者は責任を負いません。
+       大切なデータは、送る前にバックアップを取ってください。</p>
+
+    <h2>ご連絡について</h2>
+    <p>不具合や困りごとは、BOOTH のメッセージからご連絡ください。そのとき、メニューの「記録を開く」で開いたファイルの中身を添えていただくと、原因がすぐに分かります。</p>
+
+  </div>
+  <div class="footer">
+    <span>Mr.Drop for Mac v1.0.0 取扱説明書</span><span>3 / 3</span><span>© 2026</span>
+  </div>
+</div>
+
+</body>
+</html>

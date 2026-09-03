@@ -131,7 +131,7 @@ Mac 分岐は `process.platform` を `darwin` に差し替えて確かめまし�
 
 「TestFlight か App Store か」の答えです。**売り物として不特定多数に配る**ので App Store。
 Windows 版は**無署名のまま**でよい（本人判断。SmartScreen の警告は説明書で案内する形）。
-手順と審査メモの案は **`ios/APPSTORE.md`**、プライバシーポリシーは **`ios/プライバシーポリシー.md`**。
+手順と審査メモの案は **`ios/APPSTORE.md`**、プライバシーポリシーは **`PRIVACY.md`（リポジトリ直下・URL を ASCII にするため）**。
 App Store Connect の操作は本人なので**公開日は未定**。URL と版数は公開したらここに書きます。
 
 # 🆕 **Mac 版の受け取りアプリができました（`Mr.Drop.app`・メニューバー常駐・公証済み）**

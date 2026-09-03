@@ -23,8 +23,8 @@ Windows 版は無署名のまま。
 2. **価格** 無料 ／ **カテゴリ** 写真/ビデオ（サブ: ユーティリティ）
 3. **App のプライバシー**: 「データを収集しない」。全部の質問に「いいえ」
    （ファイルは LAN の中で iPhone → PC へ直接行く。こちらのサーバーは無い）
-4. **プライバシーポリシーの URL**（必須）: `ios/プライバシーポリシー.md` を公開の場所に置いて、その URL
-   （GitHub のリポジトリが公開なので https://github.com/yas-ito/mrdrop/blob/main/ios/プライバシーポリシー.md で通る）
+4. **プライバシーポリシーの URL**（必須）: `PRIVACY.md`（リポジトリ直下・URL を ASCII にするため） を公開の場所に置いて、その URL
+   （GitHub のリポジトリが公開なので https://github.com/yas-ito/mrdrop/blob/main/PRIVACY.md で通る）
 5. **年齢制限** 4+
 6. **スクリーンショット**: 6.9 インチ（1320×2868）が必須。シミュレータ「iPhone 17 Pro Max」で
    `xcrun simctl io <UDID> screenshot` で撮れる。最低 1 枚、できれば「PC 一覧」「送っている最中」「送れた」の 3 枚

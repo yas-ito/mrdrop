@@ -15,9 +15,11 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
-    # 署名は Xcode に任せる。実機に入れるときだけ本人の Team を選ぶ
+    # 署名は Xcode に任せる（Automatic）。Team は本人のもの。
+    # App Store に出す・実機に入れるのに要る。シミュレータだけなら無くても動く
     CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "6Q847K48UY"
+    # iPhone だけにするのは各ターゲットの TARGETED_DEVICE_FAMILY（ここに書いても効かない）
 
 targets:
 
@@ -34,6 +36,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: jp.yastools.mrdrop
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"       # 🔴 プロジェクト側に書いても効かない（xcodegen が 1,2 で上書きする）
     entitlements:
       path: MrDrop/MrDrop.entitlements
       properties:
@@ -43,6 +46,10 @@ targets:
       path: MrDrop/Info.plist
       properties:
         CFBundleDisplayName: Mr.Drop        # ホーム画面と共有シートに出る名前（点あり）
+        # 🔴 これが無いと xcodegen が "1.0" / "1" を固定で書き、MARKETING_VERSION と
+        #    CURRENT_PROJECT_VERSION を上げても App Store に届く版数が変わらない（実際に踏んだ）
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}                  # 無いと画面が全面に広がらない
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -74,6 +81,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: jp.yastools.mrdrop.ShareExtension
+        TARGETED_DEVICE_FAMILY: "1"
     entitlements:
       path: ShareExtension/ShareExtension.entitlements
       properties:
@@ -84,6 +92,8 @@ targets:
       properties:
         # 🔴 これが空だと iOS が拡張ごとインストールを拒む（"does not have a CFBundleDisplayName"）
         CFBundleDisplayName: Mr.Drop
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSExtension:
