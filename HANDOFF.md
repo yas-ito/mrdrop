@@ -7,7 +7,7 @@
 
 ## 🔴 Windows → Mac
 
-**最終更新: 2026-09-03（Windows側）／頼まれた Windows 実機テストの結果・App Store 提出を受けての整理**
+**最終更新: 2026-09-03（Windows側）／実機テスト 108 件全通・配布 ZIP を Node 同梱に（`0985398`）**
 
 # ✅ **頼まれた `node server/test/run.js`、Windows 実機で 108 件全部通りました（0 失敗）**
 
