@@ -13,7 +13,7 @@ AirDrop と同じ操作感を目指しています。クラウドを通りませ
 
 ## 使い方（いちばん短い道）
 
-### 1. Windows で動かす
+### 1. PC で動かす（Windows / Mac）
 
 ```bash
 node server/mrdrop.js
@@ -33,6 +33,9 @@ node server/mrdrop.js
 ────────────────────────────────────────────────────
   自動発見  _mrdrop._tcp で広告中
 ```
+
+Mac では受信箱が **`~/Downloads/受信箱`** になります
+（`~/Desktop` は iCloud 同期の対象で、数GB の動画が勝手に上がってしまうため）。
 
 ### 2. iPhone の Safari で開く
 
@@ -54,6 +57,13 @@ node server/mrdrop.js
 .\scripts\install-windows.ps1 -Uninstall   # 元に戻す
 ```
 
+Mac は `launchd` に登録します（ログイン時に立ち上がります）。
+
+```bash
+bash scripts/install-mac.sh              # 入れる
+bash scripts/install-mac.sh --uninstall  # 外す
+```
+
 ---
 
 ## 置き場所と設定
@@ -69,6 +79,10 @@ node server/mrdrop.js
   "token": ""
 }
 ```
+
+置き場所の既定は OS で変わります（上は Windows）。Mac では `~/Downloads/受信箱`・
+`~/Downloads/送信箱` になります。`~` と `%USERPROFILE%` はどちらの OS でも家に開くので、
+**Windows で書いた `config.json` を Mac へ持っていってもそのまま読めます。**
 
 | 項目 | 意味 |
 |---|---|

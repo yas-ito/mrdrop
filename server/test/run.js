@@ -3,7 +3,7 @@
 // 全部の試験を通す:  node server/test/run.js
 const t = require("./t");
 
-const FILES = ["names.test.js", "mdns.test.js", "http.test.js"];
+const FILES = ["names.test.js", "config.test.js", "mdns.test.js", "http.test.js"];
 
 (async () => {
   for (const f of FILES) {

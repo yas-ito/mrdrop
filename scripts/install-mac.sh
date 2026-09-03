@@ -4,8 +4,8 @@
 #   入れる:  bash scripts/install-mac.sh
 #   外す:    bash scripts/install-mac.sh --uninstall
 #
-# 🔴 受信箱の既定（%USERPROFILE%\Desktop\受信箱）は Mac で展開されないので、
-#    ここで config.json を作って Mac 向けの場所を書いておく。
+# 受信箱の既定は server/lib/config.js が OS ごとに決める（Mac は ~/Downloads/受信箱）。
+# ここで config.json を作るのは MRDROP_INBOX で場所を指定されたときだけ。
 set -euo pipefail
 
 LABEL="jp.yastools.mrdrop"
@@ -27,8 +27,9 @@ NODE="$(command -v node || true)"
 
 mkdir -p "$INBOX" "$HOME/Downloads/送信箱" "$LOGDIR" "$HOME/Library/LaunchAgents"
 
-# 置き場所だけ書いた config.json を作る（既にあれば触らない）
-if [ ! -f "$CONFIG" ]; then
+# MRDROP_INBOX で場所を指定されたときだけ config.json を書く。
+# 指定が無ければ何もしない（サーバーが Mac 向けの既定で自分で作る）。
+if [ ! -f "$CONFIG" ] && [ -n "${MRDROP_INBOX:-}" ]; then
   cat > "$CONFIG" <<JSON
 {
   "port": 48630,
@@ -39,7 +40,7 @@ if [ ! -f "$CONFIG" ]; then
 }
 JSON
   echo "config.json を作りました（受信箱: $INBOX）"
-else
+elif [ -f "$CONFIG" ]; then
   echo "config.json は既にあるので触りません（$CONFIG）"
 fi
 
