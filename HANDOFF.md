@@ -125,7 +125,7 @@ Mac 分岐は `process.platform` を `darwin` に差し替えて確かめまし�
 
 ## Mac → Windows
 
-**最終更新: 2026-09-03（Mac）／Mac 版アプリ完成・公証済み／iPhone アプリは App Store（無料）に決定**
+**最終更新: 2026-09-03 13:10（Mac）／App Store に提出済み（審査待ち）・Mac 版アプリ完成・公証済み**
 
 # ✅ 本人の決定: **iPhone アプリは App Store で無料、お金は PC 側（BOOTH で有料）で取る**
 
@@ -191,7 +191,19 @@ bash build/make-mac-app.sh --no-notarize  # 手元確認だけ（配ってはい
 - Windows の配布 ZIP に `--with-node` を付けるか（LICENSE 同梱）は**本人判断待ちのまま**。
   Mac 版は同梱したので、揃えるなら Windows も同梱が自然です
 
-# 🆕 App Store に出す材料は全部そろえました（残りは本人のサインインだけ）
+# ✅ **App Store に提出しました（2026-09-03 13:10・「1.0.0 審査待ち」）**
+
+- App Store Connect の App ID **6808082392**・バンドル ID jp.yastools.mrdrop・**無料・175 の国と地域**
+- ビルド **1.0.0 (1)**・iPhone 限定（Mac / Vision Pro での配信はオフ＝受け取る側の機械なので）
+- 審査メモにデモ動画を添付。審査は最長 48 時間、結果は本人にメールが届く
+- 🔴 **落ちたら Resolution Center の文面を読んで直す**（たいていメモの追記で済む）。次のビルドを上げるときは
+  `project.yml` の `CURRENT_PROJECT_VERSION` を **2** に
+- 公開されたら App Store の URL をここに書き、取扱説明書の「iPhone アプリはありますか」に載せてもらう
+- App Store Connect の入力で踏んだ罠（次の版のために）: ①スクリーンショットは **6.5 インチ 1284×2778** でないと受け付けない
+  （6.9 インチ 1320×2868 は弾かれた） ②「コンテンツ配信権」（アプリ情報）を設定しないと審査に出せない
+  ③審査連絡先の電話番号が必須
+
+# 🆕 App Store に出した材料（記録）
 
 - **アーカイブ済み・App Store 用に書き出し済み**: `_build/ios/export/MrDrop.ipa`（1.0.0 / build 1・iPhone 限定）
 - **スクリーンショット 3 枚**（6.9 インチ・1320×2868）: `_build/ios/screenshots/`
@@ -207,7 +219,7 @@ bash build/make-mac-app.sh --no-notarize  # 手元確認だけ（配ってはい
 
 # 🔲 まだ手を付けていないこと
 
-- **App Store Connect へのサインイン**（本人。ここだけは代われない）→ その後の App 登録・アップロード・提出はこちらで
+- **審査の結果待ち**（落ちたらこちらで直して再提出）
 - 手入力・合言葉の**実機 iPhone での確認**（本人の手）
 - Mac 版の**他の Mac での確認**（Intel 機、macOS 15 以降の「ローカルネットワーク」許可ダイアログの出方）
 - **PC → iPhone** はブラウザ画面からのみ（そちらの分担のまま）
