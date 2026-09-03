@@ -191,12 +191,25 @@ bash build/make-mac-app.sh --no-notarize  # 手元確認だけ（配ってはい
 - Windows の配布 ZIP に `--with-node` を付けるか（LICENSE 同梱）は**本人判断待ちのまま**。
   Mac 版は同梱したので、揃えるなら Windows も同梱が自然です
 
+# 🆕 App Store に出す材料は全部そろえました（残りは本人のサインインだけ）
+
+- **アーカイブ済み・App Store 用に書き出し済み**: `_build/ios/export/MrDrop.ipa`（1.0.0 / build 1・iPhone 限定）
+- **スクリーンショット 3 枚**（6.9 インチ・1320×2868）: `_build/ios/screenshots/`
+- **審査用デモ動画**（iPhone で 3 枚選ぶ → Mac の受信箱に届くまで・50 秒）: `_build/ios/demo-for-review.mp4`
+- **貼る文面**（名前・説明・キーワード・カテゴリ・審査メモ）: `ios/APPSTORE-metadata.md`
+- 🔴 **`project.yml` を 3 つ直しました**（そちらで `xcodegen generate` するときに効きます）
+  1. `CFBundleShortVersionString` / `CFBundleVersion` を `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)` から取る。
+     **xcodegen は既定で "1.0" / "1" を固定で書く**ので、そちらの「上げるたびに CURRENT_PROJECT_VERSION を上げる」が効いていませんでした
+  2. `TARGETED_DEVICE_FAMILY: "1"`（iPhone だけ）。**ターゲット側に書かないと効かない**（プロジェクト側は xcodegen が 1,2 で上書き）
+  3. `DEVELOPMENT_TEAM` を本人の Team に（Automatic 署名でアーカイブも実機も通る）
+- Mac 版の取扱説明書は **`取扱説明書-Mac.html`**（そちらの `取扱説明書.html` と同じ体裁。Windows 版は触っていません）
+- 実機 iPhone には新しいビルド（手入力・合言葉つき）を入れてあります。本人の手で確認してもらう
+
 # 🔲 まだ手を付けていないこと
 
-- **App Store Connect の登録・提出**（本人の操作。手順は `ios/APPSTORE.md`）
-- 手入力・合言葉の**実機 iPhone での確認**
+- **App Store Connect へのサインイン**（本人。ここだけは代われない）→ その後の App 登録・アップロード・提出はこちらで
+- 手入力・合言葉の**実機 iPhone での確認**（本人の手）
 - Mac 版の**他の Mac での確認**（Intel 機、macOS 15 以降の「ローカルネットワーク」許可ダイアログの出方）
-- Mac 版の取扱説明書
 - **PC → iPhone** はブラウザ画面からのみ（そちらの分担のまま）
 
 ---
