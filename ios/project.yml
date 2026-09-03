@@ -56,6 +56,12 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSPhotoLibraryUsageDescription: 送る写真や動画を選ぶために使います。
+        # 🔴 TestFlight / App Store に上げるときの「輸出コンプライアンス」の答え。
+        #    これが無いと、**アップロードのたびに App Store Connect で止まって聞かれる**
+        #    （答えるまでテスターに配られない）。Mr.Drop は LAN 内の平文 HTTP だけで
+        #    暗号を1つも使っていないので false が正しい答え。
+        #    ⚠️ 将来 HTTPS や暗号化を入れたら、この行を消して答え直すこと。
+        ITSAppUsesNonExemptEncryption: false
 
   ShareExtension:
     type: app-extension
