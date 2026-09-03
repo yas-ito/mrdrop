@@ -151,7 +151,7 @@ struct ContentView: View {
             Text("送る形式")
         } footer: {
             Text(convertForPC
-                 ? "写真は JPEG、動画は MP4 にして送ります。動画は容器を替えるだけなので画質は変わりません（共有シートから送るときは、動画はそのままです）。"
+                 ? "HEIC の写真は JPEG、動画は MP4 にして送ります。PNG やすでに JPEG のものは触りません。動画は容器を替えるだけなので画質は変わりません（共有シートから送るときは、動画はそのままです）。"
                  : "撮ったままの形式（HEIC・MOV）で送ります。画質と情報は一切変わりません。")
         }
     }
@@ -278,7 +278,7 @@ struct ContentView: View {
                     outcome = await load(item, as: PickedMP4.self, ticket: ticket)
                 } else if isMovie {
                     outcome = await load(item, as: PickedMOV.self, ticket: ticket)
-                } else if convertForPC {
+                } else if convertForPC, types.contains(where: { MrDrop.isHEIF($0.identifier) }) {
                     outcome = await load(item, as: PickedJPEG.self, ticket: ticket)   // HEIC → JPEG
                 } else {
                     outcome = await load(item, as: PickedPhoto.self, ticket: ticket)

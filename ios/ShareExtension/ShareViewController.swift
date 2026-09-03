@@ -94,9 +94,7 @@ final class ShareViewController: UIViewController {
 
         // 「扱いやすい形式で」が入っていれば、写真だけ JPEG を頼む。
         // 🔴 動画はここでは変換しない。メモリ 120MB の中で作り直すと落ちる。
-        if MrDrop.convertForPC,
-           UTType(best)?.conforms(to: .image) == true,
-           usable.contains(UTType.jpeg.identifier) {
+        if MrDrop.convertForPC, MrDrop.isHEIF(best), usable.contains(UTType.jpeg.identifier) {
             return UTType.jpeg.identifier
         }
         return best

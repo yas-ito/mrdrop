@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 /// 本体アプリと共有拡張の両方から使う土台。
 /// 🔴 両方のターゲットに追加すること（片方だけだと共有シートから送れない）。
@@ -151,6 +152,15 @@ enum MrDrop {
         let keys = e.userInfo.keys.filter { $0 != NSUnderlyingErrorKey }
         if !keys.isEmpty { s += " userInfo=[\(keys.joined(separator: ", "))]" }
         return s
+    }
+
+    /// その型は「Windows で扱いにくい HEIC / HEIF」か。
+    /// 🔴 変換するのはこれだけ。PNG（スクリーンショット）は Windows でも困らないし、
+    ///    JPEG にすると文字がにじむ。すでに JPEG のものも触らない。
+    static func isHEIF(_ identifier: String) -> Bool {
+        guard let t = UTType(identifier) else { return false }
+        if let heif = UTType("public.heif"), t.conforms(to: heif) { return true }
+        return t.conforms(to: .heic)
     }
 
     /// 拡張子を小文字に揃える。
