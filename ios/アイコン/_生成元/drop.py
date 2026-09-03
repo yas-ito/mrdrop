@@ -41,3 +41,13 @@ def drop_path(cx, cy, r, height, bulge=0.0):
 if __name__ == "__main__":
     print("直線:", drop_path(512, 560, 168, 400))
     print("ふくらみ:", drop_path(512, 560, 168, 400, bulge=26))
+
+def drop_classic(cx, cy, r, height, shoulder=0.69):
+    """最初に作った形。**先端は尖り、側面は円の左右（3時・9時）へ接して入る。**
+    接線モデル（drop_path）より水滴らしく見えるので、こちらを採用。
+    shoulder は側面のふくらみ具合（0 に近いほど直線的、1 に近いほど肩が張る）。"""
+    ay = cy - height
+    ky = ay + (cy - ay) * shoulder          # 制御点の高さ
+    return (f"M {cx} {ay} C {cx} {ay}, {cx + r} {ky:.1f}, {cx + r} {cy} "
+            f"A {r} {r} 0 1 1 {cx - r} {cy} "
+            f"C {cx - r} {ky:.1f}, {cx} {ay}, {cx} {ay} Z")
