@@ -78,104 +78,44 @@
 
 ## Mac → Windows
 
-**最終更新: 2026-09-03 13:10（Mac）／App Store に提出済み（審査待ち）・Mac 版アプリ完成・公証済み**
+**最終更新: 2026-09-04 12:35（Mac）／App Store から差し戻し（情報要求のみ）→ 返信済み・再提出は不要**
 
-# ✅ 本人の決定: **iPhone アプリは App Store で無料、お金は PC 側（BOOTH で有料）で取る**
+# 🔴 **1.0.0 (1) は「Guideline 2.1 情報要求」で差し戻されました。コードの指摘はゼロです**
 
-「TestFlight か App Store か」の答えです。**売り物として不特定多数に配る**ので App Store。
-Windows 版は**無署名のまま**でよい（本人判断。SmartScreen の警告は説明書で案内する形）。
-手順と審査メモの案は **`ios/APPSTORE.md`**、プライバシーポリシーは **`PRIVACY.md`（リポジトリ直下・URL を ASCII にするため）**。
-App Store Connect の操作は本人なので**公開日は未定**。URL と版数は公開したらここに書きます。
+「開発者アカウントの審査履歴が浅いので、もっと情報がほしい」という定型のものでした。
+不具合の指摘は1つもありません。**そちらの `server/` に直すところはありません。**
 
-# 🆕 **Mac 版の受け取りアプリができました（`Mr.Drop.app`・メニューバー常駐・公証済み）**
+Apple が求めたのは6つ（①実機で撮った画面収録 ②目的と対象 ③使い方 ④外部サービス
+⑤地域差 ⑥規制業種）。**英文の答えは `ios/APPSTORE-review-reply.md`** に残してあります。
 
-そちらの「Mac 版を配るかどうかはそちらの判断」への答えです。**配ります。**
-Windows の `はじめる.bat` に当たるものが、Mac では `Mr.Drop.app` です。
+# ✅ **2026-09-04 12:29 に App Review へ返信しました（動画つき）。再提出はしていません**
 
-```bash
-bash build/make-mac-app.sh                # 作る → 署名 → 公証 → zip（数分）
-bash build/make-mac-app.sh --no-notarize  # 手元確認だけ（配ってはいけない）
-```
+Apple のメール（と Resolution Center）が「情報だけなら**再提出は不要**、返信すればよい」と
+明記しているため、「審査内容を更新」は押していません。**結果待ちです。**
 
-- できる物: `_build/MrDrop_v1.0.0_mac.zip`（**80MB**・中身は .app 1つ）。展開してダブルクリックするだけ
-- **Node を同梱**（nodejs.org 公式 v24.20.0・arm64＋Intel の universal・SHASUMS256 で検算）。
-  🔴 **Homebrew の node は持ち出せません**（Homebrew のライブラリに依存・実測）。
-  そちらの `--with-node` と同じ考え方で、Node.js の LICENSE も同梱しています
-- 🔴 **`make-package.js` に `--target mac` は足しませんでした。**.app は実行権限と署名を保って zip に
-  する必要があり、自前 zip では壊れるため。Mac は `ditto` で作る別スクリプトです
-- サーバーは `server/` の JS をそのまま同梱（`Contents/Resources/server/`）。**Mac 側に転送ロジックは書いていません**
-- メニュー: 状態／iPhone の Safari で開く住所（押すとコピー）／受信箱を開く／受信箱を変える／合言葉／記録を開く／ログイン時に起動／終了
-- 設定 `~/Library/Application Support/Mr.Drop/config.json`（サーバーが既定で作る）、記録 `~/Library/Logs/MrDrop/mrdrop.log`
-- 実機（Mac mini・macOS 26）で通した: 起動 → 48630 で待つ → `/health` `/api/info` OK → 通常終了で親子とも消える
-  → **kill -9 でも node が残らない** → 公証 Accepted → zip から出し直して署名・staple とも無事
+- 🔴 **前回の審査用デモ動画はシミュレータ収録だった**（1320×2868・30fps）＝これが受け付けられない材料。
+  **実機（iPhone 13 Pro Max・iOS 26.6.1）で撮り直しました**
+- 撮り方: iPhone を USB で Mac につなぎ、**QuickTime の「新規ムービー収録」でカメラに iPhone を選んで画面を映し**、
+  その QuickTime の窓と**受信箱の Finder ウィンドウを並べて、Mac 側を ffmpeg で画面録画**。
+  1本で「iPhone の操作」と「PC に届く所」が同時に写る。`screencapture -v` は SIGINT でも `-V` でも
+  止まらなかった（ファイルが書かれない）ので **ffmpeg の avfoundation を使うこと**
+- できた物: `_build/ios/demo-for-review-device.mp4`（39秒・1920×1108）と、
+  添付用に軽くした `MrDrop-demo-iPhone13ProMax-iOS26.mp4`（7.7MB・1400×1184）
+- **審査メモ（App Review Information のメモ）も同じ6項目の英文に差し替え、添付も実機版に入れ替えました**
+- **リリースは「手動」に変更**（審査に通っても勝手に公開されない。BOOTH の PC 側と足並みを揃えるため）
+- App Store Connect の罠: 返信欄は **4000字まで**。超えると「このフィールドは無効です」が出て、
+  **短くしても消えない**（ダイアログを閉じて開き直すと直る）
 
-# 🔴 `server/` を 2 か所だけ触りました（そちらの領分ですが、Mac 版に要るので）
+# 🔲 そちらは今までどおり待ちで構いません
 
-1. **`mrdrop.js` の記録の置き場所を Mac だけ `~/Library/Logs/MrDrop` に**（`process.platform === "darwin"` の分岐）。
-   Windows は今までどおり `%LOCALAPPDATA%\MrDrop`。理由: Mac の tmpdir は 3 日で掃除され、問い合わせのときに読めない
-2. **`--follow-stdin` を足した**（stdin が閉じたら `bye()`）。Mac 版アプリが子プロセスとして回すときだけ付ける。
-   既定では stdin を読まない（タスクスケジューラ起動の罠を避けるため）。
-   **`server/test/follow.test.js` で固定**（本物の入口を別プロセスで立て、stdin を閉じたら 4 秒以内に終わるか）。
-   Mac で **108 件全部通っています**。🔴 **Windows 実機でも `node server/test/run.js` を通してください**
-   （spawn と stdin パイプは OS 依存の可能性があるところ）
-
-# ✅ お願いされていた `install-mac.sh` の実機確認、通りました
-
-`config.json` を退避してから `bash scripts/install-mac.sh` → `mrdrop.out.log` の受信箱の行は
-**`/Users/yas/Downloads/受信箱`**。リポジトリ直下に `%USERPROFILE%` のフォルダは**できていません**。
-できた `config.json` は `~/Downloads/受信箱` 表記（サーバーの既定）。**そちらの直しは Mac で正しく動いています。**
-
-# 🆕 iOS 側に 3 つ足しました（シミュレータで確認・実機 iPhone は未）
-
-1. **PC が見つからないときの案内**（6 秒たっても見つからなければ理由と手立てを出す）… 審査対策と購入者の親切の両方。
-   🔴 **画面では未確認**（同じ LAN にそちらの Windows 機「yas」がいて必ず見つかるため。ビルドは通っている）
-2. **住所の手入力**（「住所を手で入れる…」の行がいつでも出ている。`192.168.1.20:48630` や `http://…` を入れて「つなぐ」
-   → `/api/info` で確かめてから送り先にする。見つからないまま 6 秒たてば入力欄が自動で開く）
-   … ゲスト Wi-Fi や AP 隔離で Bonjour が通らないときの逃げ道。**そちらの「見つからない」問い合わせの答えにも使えます**。
-   シミュレータで、mDNS を出さない偽の PC（48631）に対して**送り先に加わるところまで確認済み**
-3. **合言葉の入力欄**（PC 側で token を決めた人向け。今まで入れる場所が無かった）
-
-🔴 アプリの中に「PC 版を買う」導線は置いていません（App Store 3.1.1）。案内は「PC 版が動いている必要がある」と事実だけ
-
-# 🔲 そちらへのお願い
-
-- 取扱説明書の「iPhone アプリはありますか」は **App Store 公開まで今のまま**で構いません。公開したら URL を渡します
-- Mac 版の取扱説明書は**こちらで書きます**（`取扱説明書.html` は Windows 向けのまま触りません）
-- Windows の配布 ZIP に `--with-node` を付けるか（LICENSE 同梱）は**本人判断待ちのまま**。
-  Mac 版は同梱したので、揃えるなら Windows も同梱が自然です
-
-# ✅ **App Store に提出しました（2026-09-03 13:10・「1.0.0 審査待ち」）**
-
-- App Store Connect の App ID **6808082392**・バンドル ID jp.yastools.mrdrop・**無料・175 の国と地域**
-- ビルド **1.0.0 (1)**・iPhone 限定（Mac / Vision Pro での配信はオフ＝受け取る側の機械なので）
-- 審査メモにデモ動画を添付。審査は最長 48 時間、結果は本人にメールが届く
-- 🔴 **落ちたら Resolution Center の文面を読んで直す**（たいていメモの追記で済む）。次のビルドを上げるときは
-  `project.yml` の `CURRENT_PROJECT_VERSION` を **2** に
-- 公開されたら App Store の URL をここに書き、取扱説明書の「iPhone アプリはありますか」に載せてもらう
-- App Store Connect の入力で踏んだ罠（次の版のために）: ①スクリーンショットは **6.5 インチ 1284×2778** でないと受け付けない
-  （6.9 インチ 1320×2868 は弾かれた） ②「コンテンツ配信権」（アプリ情報）を設定しないと審査に出せない
-  ③審査連絡先の電話番号が必須
-
-# 🆕 App Store に出した材料（記録）
-
-- **アーカイブ済み・App Store 用に書き出し済み**: `_build/ios/export/MrDrop.ipa`（1.0.0 / build 1・iPhone 限定）
-- **スクリーンショット 3 枚**（6.9 インチ・1320×2868）: `_build/ios/screenshots/`
-- **審査用デモ動画**（iPhone で 3 枚選ぶ → Mac の受信箱に届くまで・50 秒）: `_build/ios/demo-for-review.mp4`
-- **貼る文面**（名前・説明・キーワード・カテゴリ・審査メモ）: `ios/APPSTORE-metadata.md`
-- 🔴 **`project.yml` を 3 つ直しました**（そちらで `xcodegen generate` するときに効きます）
-  1. `CFBundleShortVersionString` / `CFBundleVersion` を `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)` から取る。
-     **xcodegen は既定で "1.0" / "1" を固定で書く**ので、そちらの「上げるたびに CURRENT_PROJECT_VERSION を上げる」が効いていませんでした
-  2. `TARGETED_DEVICE_FAMILY: "1"`（iPhone だけ）。**ターゲット側に書かないと効かない**（プロジェクト側は xcodegen が 1,2 で上書き）
-  3. `DEVELOPMENT_TEAM` を本人の Team に（Automatic 署名でアーカイブも実機も通る）
-- Mac 版の取扱説明書は **`取扱説明書-Mac.html`**（そちらの `取扱説明書.html` と同じ体裁。Windows 版は触っていません）
-- 実機 iPhone には新しいビルド（手入力・合言葉つき）を入れてあります。本人の手で確認してもらう
+- 取扱説明書の「iPhone アプリはありますか」は**公開まで今のまま**。URL と版数は公開したら書きます
+- **PC → iPhone** はブラウザ画面からのみ（そちらの分担のまま）
+- 配布 ZIP の Node 同梱（`0985398`）と実機テスト 108 件全通、ありがとうございます。こちらの作業はありません
 
 # 🔲 まだ手を付けていないこと
 
-- **審査の結果待ち**（落ちたらこちらで直して再提出）
-- 手入力・合言葉の**実機 iPhone での確認**（本人の手）
-- Mac 版の**他の Mac での確認**（Intel 機、macOS 15 以降の「ローカルネットワーク」許可ダイアログの出方）
-- **PC → iPhone** はブラウザ画面からのみ（そちらの分担のまま）
+- **Apple の返事待ち**（通れば「リリース」を押した時点で公開）
+- Mac 版の**他の Mac での確認**（Intel 機、macOS 15 以降の「ローカルネットワーク」許可の出方）
 
 ---
 
