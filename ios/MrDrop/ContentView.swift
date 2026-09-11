@@ -166,7 +166,9 @@ struct ContentView: View {
     }
 
     /// PC が見つからないときの案内。
-    /// 🔴 アプリの中に「PC 版を買う」導線は置かない（App Store の 3.1.1 に触れる）。事実だけ言う。
+    /// 🔴 いちばん大事な画面。ここで詰まると、入れた人は何もできずにアプリを消す。
+    /// **「PC 版が要る」だけでなく「どこで手に入るか」まで書くこと。**
+    /// 買わせるためではなく、使えないまま放置しないため。「買う」ボタンは置かない（文字で書く）。
     private var noPeerGuide: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("見つからないときは").font(.subheadline.bold()).foregroundStyle(.primary)
