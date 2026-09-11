@@ -155,8 +155,8 @@
       <ol>
         <li>ZIP を右クリック →「<strong>すべて展開</strong>」（中身だけ取り出すと動きません）</li>
         <li><strong>はじめる.bat</strong> をダブルクリック</li>
-        <li>黒い画面に出た住所を、iPhone の <strong>Safari</strong> で開く</li>
-        <li>「写真・動画を選ぶ」を押す。選んだ瞬間に PC へ届きます</li>
+        <li>iPhone に <strong>Mr.Drop アプリ</strong>を入れる（App Store で<strong>無料</strong>）</li>
+        <li>写真アプリの<strong>共有ボタン</strong>から「Mr.Drop」を選ぶ。それだけで PC へ届きます</li>
       </ol>
     </div>
 
@@ -167,7 +167,7 @@
     <ul>
       <li><strong>インターネットを通りません。</strong>端末どうしが直接やりとりします。写真がどこかのサーバーに残ることはありません</li>
       <li><strong>元のまま届きます。</strong>HEIC が JPEG に変換されたり、動画が小さくされたりしません</li>
-      <li><strong>アプリを入れなくても使えます。</strong>iPhone の Safari で開くだけです</li>
+      <li><strong>iPhone アプリが App Store で無料です。</strong>写真アプリの共有ボタンから、そのまま送れます</li>
       <li><strong>PC → iPhone もできます。</strong>PC の「送信箱」に入れたものを、iPhone から受け取れます</li>
     </ul>
     <div class="hint">追加のソフトは何も入りません。この道具は外部の部品（npm パッケージ）を1つも使っていないので、
@@ -202,7 +202,7 @@
   受信箱  C:\Users\あなた\Desktop\受信箱
   送信箱  C:\Users\あなた\Desktop\送信箱
 ────────────────────────────────────────────────────
-  iPhone の Safari から、このどれかを開いてください:
+  iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:
     http://my-pc.local:48630
     http://192.168.1.20:48630      （イーサネット）</pre>
         </div>
@@ -219,10 +219,16 @@
       <div class="step-row">
         <div class="step-num">3</div>
         <div class="step-body">
-          <div class="step-label">iPhone の Safari で、表示された住所を開く</div>
-          <p><code>http://＜PC名＞.local:48630</code> が開ければ、いちばん簡単です。開けないときは、その下に出ている
-             <code>http://192.168.…</code> の方を打ってください。<strong>iPhone と PC が同じ Wi-Fi につながっている必要があります。</strong></p>
-          <p>共有ボタン →「<strong>ホーム画面に追加</strong>」しておくと、次からはアプリのように1タップで開けます。</p>
+          <div class="step-label">iPhone に Mr.Drop アプリを入れる（App Store で無料）</div>
+          <p>App Store で「<strong>Mr.Drop</strong>」を検索して入れてください。<strong>送り先の PC は自動で見つかります。</strong>
+             住所を打つ必要はありません。あとは写真アプリの<strong>共有ボタン</strong>から「Mr.Drop」を選ぶだけです。</p>
+          <div class="hint">初めて使うとき、iPhone が「ローカルネットワーク上のデバイスへのアクセスを許可しますか」と聞いてきます。
+            <strong>「許可」を押してください。</strong>断ると、同じ Wi-Fi にいても PC を見つけられません
+            （あとから 設定 › プライバシーとセキュリティ › ローカルネットワーク で直せます）。</div>
+          <p style="margin-top:14px"><strong>アプリを入れられないときは</strong> — iPhone の Safari で
+             <code>http://＜PC名＞.local:48630</code> を開いても送れます。開けないときは、黒い画面に出ている
+             <code>http://192.168.…</code> の方を打ってください。共有ボタン →「<strong>ホーム画面に追加</strong>」
+             しておくと、次から1タップで開けます。<strong>iPhone と PC が同じ Wi-Fi につながっている必要があります。</strong></p>
         </div>
       </div>
     </div>
@@ -358,9 +364,11 @@
 
     <div class="qa-item">
       <div class="qa-q">iPhone のアプリはありますか</div>
-      <div class="qa-a">ソースはありますが、<strong>配布はしていません</strong>（App Store に出していないため、
-        入れるには Mac と Xcode が要ります）。<strong>Safari から使う分には、アプリと同じことができます。</strong>
-        共有ボタン →「ホーム画面に追加」をしておくと、見た目もアプリとほぼ同じになります。</div>
+      <div class="qa-a"><strong>App Store で無料で公開しています</strong>（「Mr.Drop」で検索）。
+        この道具は、<strong>アプリを入れたときが本来の形</strong>です。写真アプリの共有ボタンからそのまま送れて、
+        送り先の PC も自動で見つけます。共有ボタンから送れば、アプリを閉じても転送は続きます。<br>
+        アプリを入れられない iPhone や Android のために、<strong>ブラウザだけで送れる画面も用意してあります</strong>
+        （Safari で住所を開くだけ。共有ボタン →「ホーム画面に追加」で、次から1タップで開けます）。</div>
     </div>
 
     <div class="qa-item">

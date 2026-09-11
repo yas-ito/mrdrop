@@ -124,7 +124,7 @@ async function main() {
   log(`  受信箱  ${cfg.inbox}`);
   log(`  送信箱  ${cfg.outbox}`);
   log(line);
-  log("  iPhone の Safari から、このどれかを開いてください:");
+  log("  iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:");
   log(`    http://${hostLabel}.local:${cfg.port}`);
   for (const a of localIPv4s()) log(`    http://${a.address}:${cfg.port}      （${a.iface}）`);
   log(line);
