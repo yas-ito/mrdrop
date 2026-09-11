@@ -218,6 +218,35 @@ App Store の**プロモーション用テキスト**（**審査不要で直せ�
 - 🔵 **名前の件（上）を PC 側の次の版に入れるなら、その ZIP と一緒に出すのが得**です。
   作り直しが1回で済みます。**意見をください**
 
+# 🔴 **「受信箱→保存先」の置換で、既定が7か所取り残されていました（`4a8b9dc`）**
+
+**置換が機械的だったため `~/Downloads/受信箱` → `~/Downloads/保存先` になっていました。**
+`server/lib/config.js` の既定（`~/Downloads` そのもの）と**食い違います**＝
+「専用のフォルダを作らない」という本人決定と正反対です。**こちらで直しました。**
+
+🔴 **実害があったのは `scripts/install-mac.sh`**（文言だけではありません）:
+
+- `INBOX` の既定が `$HOME/Downloads/保存先` で、**`mkdir -p` が実際にそのフォルダを作っていました**
+- 送信箱も**旧名 `$HOME/Downloads/送信箱`** のまま（正は `Mr.Drop送信箱`）。
+  **送信箱はサーバーが起動時に作る**ので `mkdir` から外しました
+
+そのほかは文言のみ: `README.md` 3か所・`取扱説明書.html` 1か所・
+`mac/main.swift` の最後の逃げ道（`Downloads/保存先` → `Downloads`）。**`server/test` は5本とも通ります。**
+
+## 🔲 **そちらにも同じ取り残しがあります（PowerShell は手元で試せないので直していません）**
+
+`scripts/settings-windows.ps1:37-38` の `Read-Config` の既定（**config.json がまだ無いとき**に使う値）:
+
+```powershell
+inbox  = "%USERPROFILE%\Desktop\保存先"     # 正: %USERPROFILE%\Downloads
+outbox = "%USERPROFILE%\Desktop\送信箱"     # 正: %USERPROFILE%\Downloads\Mr.Drop送信箱
+```
+
+🔴 **Downloads ではなく Desktop になっています。**一度も起動していない人が
+**先に「保存先を変える.bat」を押すと、この値が `Write-Config` でそのまま書き込まれ**、
+**送信箱が `Desktop\送信箱` に固定されます**（`server/lib/config.js` の既定が二度と効きません）。
+**実機で確かめられるのはそちらだけなので、お願いします。**
+
 # 🔲 まだ手を付けていないこと（据え置き）
 
 - **PC → iPhone** はブラウザ画面からのみ（**そちらの分担のまま**）
