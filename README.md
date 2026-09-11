@@ -39,7 +39,7 @@ node server/mrdrop.js
 ```
   Mr.Drop 1.0.0   MY-PC
 ────────────────────────────────────────────────────
-  受信箱  C:\Users\<あなた>\Desktop\受信箱
+  保存先  C:\Users\<あなた>\Desktop\保存先
   送信箱  C:\Users\<あなた>\Desktop\送信箱
 ────────────────────────────────────────────────────
   iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:
@@ -49,7 +49,7 @@ node server/mrdrop.js
   自動発見  _mrdrop._tcp で広告中
 ```
 
-Mac では受信箱が **`~/Downloads/受信箱`** になります
+Mac では保存先が **`~/Downloads/保存先`** になります
 （`~/Desktop` は iCloud 同期の対象で、数GB の動画が勝手に上がってしまうため）。
 
 **Mac に配るのは `Mr.Drop.app`（メニューバー常駐）です。**Node を同梱しているので、
@@ -92,14 +92,14 @@ bash scripts/install-mac.sh --uninstall  # 外す
 ```json
 {
   "port": 48630,
-  "inbox": "%USERPROFILE%\\Desktop\\受信箱",
+  "inbox": "%USERPROFILE%\\Desktop\\保存先",
   "outbox": "%USERPROFILE%\\Desktop\\送信箱",
   "name": "",
   "token": ""
 }
 ```
 
-置き場所の既定は OS で変わります（上は Windows）。Mac では `~/Downloads/受信箱`・
+置き場所の既定は OS で変わります（上は Windows）。Mac では `~/Downloads/保存先`・
 `~/Downloads/送信箱` になります。`~` と `%USERPROFILE%` はどちらの OS でも家に開くので、
 **Windows で書いた `config.json` を Mac へ持っていってもそのまま読めます。**
 
@@ -154,7 +154,7 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 - **Node は同梱しています**（nodejs.org の公式バイナリ・arm64 と Intel の universal）。
   受け取る人の Mac には何も要りません。🔴 Homebrew の node は持ち出せません（他の Mac で動かない）
 - Developer ID で署名して Apple の公証を通します。通さないと「開発元を確認できない」で開けません
-- 受信箱は `~/Downloads/受信箱`。メニューの「受信箱を変える…」で Premiere の素材フォルダにできます
+- 保存先は `~/Downloads/保存先`。メニューの「保存先を変える…」で Premiere の素材フォルダにできます
 - 設定は `~/Library/Application Support/Mr.Drop/config.json`、記録は `~/Library/Logs/MrDrop/mrdrop.log`
   （メニューの「記録を開く」で開きます。問い合わせのときはこれを送ってもらう）
 - アプリを強制終了しても受信サーバーは残りません（`--follow-stdin`。`test/follow.test.js` で固定）
@@ -178,7 +178,7 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 | iPhone から開けない | PC と同じ Wi-Fi か。`install-windows.ps1` でファイアウォールを開けたか |
 | `.local` で開けない | 代わりに IP（`http://192.168.…`）で開く |
 | アプリが PC を見つけない | `node server/mrdrop.js --browse` で PC 自身が見つけられるか確かめる。<br>見つかるならアプリ側（`Info.plist` の `NSBonjourServices`）を疑う |
-| 大きい動画が途中で止まる | 半端なファイルは受信箱に出さない作りです。もう一度送ってください |
+| 大きい動画が途中で止まる | 半端なファイルは保存先に出さない作りです。もう一度送ってください |
 | 自動起動しているか分からない | `.\scripts\install-windows.ps1 -Status` |
 | Mac で「開発元を確認できない」と出る | 公証していない版。`make-mac-app.sh` を `--no-notarize` なしで作り直す |
 | Mac で「ローカルネットワーク」の許可を聞かれた | 「許可」を押す。断ると iPhone から見つからなくなる（設定 › プライバシーとセキュリティ › ローカルネットワーク で直せる） |
@@ -189,5 +189,5 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 node server/test/run.js
 ```
 
-`../` でどこにでも書けないこと、途中で切れたものを受信箱に出さないこと、
+`../` でどこにでも書けないこと、途中で切れたものを保存先に出さないこと、
 mDNS のパケットを組んで読み戻せることを固定してあります。

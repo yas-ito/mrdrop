@@ -11,7 +11,7 @@ const { pipeline } = require("stream/promises");
 const { safeName, uniqueName, humanSize } = require("./names");
 const { page } = require("./ui");
 
-const PART_DIR = ".mrdrop-part";      // 書きかけの置き場（受信箱の中に隠す）
+const PART_DIR = ".mrdrop-part";      // 書きかけの置き場（保存先の中に隠す）
 
 // LAN の外からは相手にしない。ルータの穴あけ事故で世界に晒される事態を防ぐ。
 function isLocalAddress(ip) {
@@ -148,7 +148,7 @@ function createServer(cfg, log = console.log) {
         try {
           await pipeline(req, fs.createWriteStream(tmp));
         } catch (e) {
-          // 🔴 途中で切れたものは絶対に受信箱へ出さない。半端なファイルは事故のもと。
+          // 🔴 途中で切れたものは絶対に保存先へ出さない。半端なファイルは事故のもと。
           await fsp.rm(tmp, { force: true });
           log(`⚠️ 途中で切れました: ${wanted}（${e.code || e.message}）`);
           return text(res, 400, "途中で切れました");

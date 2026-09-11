@@ -11,7 +11,7 @@
 // サーバー本体は server/ の JS のまま（Windows と共通）。この Swift がやるのは
 //   ・同梱の node で server/mrdrop.js を子プロセスとして回し、出力を読む
 //   ・メニューバーに状態と住所を出す
-//   ・受信箱／合言葉／ログイン時起動の面倒を見る
+//   ・保存先／合言葉／ログイン時起動の面倒を見る
 // だけ。**転送のロジックをこちらに書かない**（両 OS で二重になる）。
 import AppKit
 import ServiceManagement
@@ -32,7 +32,7 @@ final class App: NSObject, NSApplicationDelegate {
     private var server: Process?
     private var status = "起動中…"
     private var addresses: [String] = []       // サーバーが名乗った住所（http://…）
-    private var inboxFromServer: String?       // サーバーが実際に使っている受信箱
+    private var inboxFromServer: String?       // サーバーが実際に使っている保存先
     private var logFile: String?               // サーバーの記録ファイル
     private var received = 0
     private var restarts = 0
@@ -164,7 +164,7 @@ final class App: NSObject, NSApplicationDelegate {
             if let r = line.range(of: #"https?://[^\s（）()]+"#, options: .regularExpression) {
                 let url = String(line[r])
                 if !addresses.contains(url) { addresses.append(url) }
-            } else if line.hasPrefix("受信箱") {
+            } else if line.hasPrefix("保存先") {
                 inboxFromServer = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
             } else if line.hasPrefix("記録") {
                 logFile = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
@@ -201,8 +201,8 @@ final class App: NSObject, NSApplicationDelegate {
             }
         }
         m.addItem(.separator())
-        add(m, "受信箱を開く", #selector(openInbox), key: "o")
-        add(m, "受信箱を変える…", #selector(chooseInbox))
+        add(m, "保存先を開く", #selector(openInbox), key: "o")
+        add(m, "保存先を変える…", #selector(chooseInbox))
         add(m, "合言葉を決める…", #selector(setToken))
         add(m, "記録を開く", #selector(openLog))
         let login = add(m, "ログイン時に起動", #selector(toggleLogin))
@@ -241,7 +241,7 @@ final class App: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.open(URL(fileURLWithPath: p))
     }
 
-    /// 受信箱を選び直す。Premiere の素材フォルダにしておくのが自作の一番のうまみ。
+    /// 保存先を選び直す。Premiere の素材フォルダにしておくのが自作の一番のうまみ。
     @objc private func chooseInbox() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -296,7 +296,7 @@ final class App: NSObject, NSApplicationDelegate {
         if let p = readConfig()?["inbox"] as? String {
             return URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
         }
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/受信箱")
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/保存先")
     }
 
     private func readConfig() -> [String: Any]? {

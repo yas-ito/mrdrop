@@ -1,6 +1,6 @@
 @echo off
 rem ---------------------------------------------------------------
-rem  Mr.Drop - open the folder where received files land.
+rem  Mr.Drop - open the folder where received files are saved.
 rem  NOTE (for maintainers): ASCII only, CRLF.
 rem ---------------------------------------------------------------
 setlocal

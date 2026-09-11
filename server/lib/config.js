@@ -3,24 +3,28 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-// 置き場所の既定は OS で変える。Windows は昔から使っている表記のまま。
-// 🔴 Mac の ~/Desktop は iCloud 同期の対象なので使わない（数GBの動画が勝手に上がる）。
-//    Mac/Linux は ~/Downloads に落とす。~ は下の expand() が os.homedir() に開く。
+// 🔴 既定は**両OSともダウンロードフォルダそのもの**（本人決定 2026-09-12）。
+//    ・専用のフォルダを勝手に作らない。届いたものは、いつも使う場所へ直接落とす
+//    ・Mac の ~/Desktop は iCloud 同期の対象なので、そもそも使えない
+//      （数GBの動画が勝手に上がる）。両OSで揃える意味でも Downloads にした
+//    ~ は下の expand() が os.homedir() に開く。
 const WIN = process.platform === "win32";
-const DESK = WIN ? "%USERPROFILE%\\Desktop" : "~/Downloads";
+const DL = WIN ? "%USERPROFILE%\\Downloads" : "~/Downloads";
 const SEP = WIN ? "\\" : "/";
 
 // 初回に config.json を作る。中身を書き換えれば置き場所も番号も変えられる。
 const DEFAULTS = {
   port: 48630,                                   // 一撃極ターボ（48620）とぶつからない番号
-  inbox: `${DESK}${SEP}受信箱`,
-  outbox: `${DESK}${SEP}送信箱`,
+  inbox: DL,                                     // 届いたものの保存先。ダウンロードフォルダに直接
+  // 🔴 送信箱だけは専用のフォルダにする。ここの中身は**同じ Wi-Fi から一覧できる**ので、
+  //    ダウンロードフォルダそのものにすると、置いてある物が全部見えてしまう。
+  outbox: `${DL}${SEP}Mr.Drop送信箱`,
   name: "",                                      // 空なら PC 名。iPhone にはこれが見える
   token: "",                                     // 空なら合言葉なし（家の LAN 前提）
 };
 
 // %USERPROFILE% は Mac/Linux に無い。Windows で書かれた config.json を持ってきたときに
-// 「%USERPROFILE%\Desktop\受信箱」という名前のフォルダを作らないよう、家に落とす。
+// 「%USERPROFILE%\Downloads」という名前のフォルダを作らないよう、家に落とす。
 const HOME_VARS = { USERPROFILE: true, HOME: true, HOMEPATH: true };
 
 // Windows 表記に見えるものだけ区切りを / に読み替える。

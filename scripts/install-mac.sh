@@ -4,7 +4,7 @@
 #   入れる:  bash scripts/install-mac.sh
 #   外す:    bash scripts/install-mac.sh --uninstall
 #
-# 受信箱の既定は server/lib/config.js が OS ごとに決める（Mac は ~/Downloads/受信箱）。
+# 保存先の既定は server/lib/config.js が OS ごとに決める（Mac は ~/Downloads/保存先）。
 # ここで config.json を作るのは MRDROP_INBOX で場所を指定されたときだけ。
 set -euo pipefail
 
@@ -12,7 +12,7 @@ LABEL="jp.yastools.mrdrop"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="$ROOT/config.json"
-INBOX="${MRDROP_INBOX:-$HOME/Downloads/受信箱}"
+INBOX="${MRDROP_INBOX:-$HOME/Downloads/保存先}"
 LOGDIR="$HOME/Library/Logs/MrDrop"
 
 if [ "${1:-}" = "--uninstall" ]; then
@@ -39,7 +39,7 @@ if [ ! -f "$CONFIG" ] && [ -n "${MRDROP_INBOX:-}" ]; then
   "token": ""
 }
 JSON
-  echo "config.json を作りました（受信箱: $INBOX）"
+  echo "config.json を作りました（保存先: $INBOX）"
 elif [ -f "$CONFIG" ]; then
   echo "config.json は既にあるので触りません（$CONFIG）"
 fi
@@ -75,7 +75,7 @@ launchctl bootstrap "gui/$(id -u)" "$PLIST"
 sleep 1
 if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
   echo "✅ 常駐しました。ログイン時に自動で立ち上がります"
-  echo "   受信箱: $INBOX"
+  echo "   保存先: $INBOX"
   echo "   記録:   $LOGDIR/mrdrop.out.log"
   echo "   外すとき: bash scripts/install-mac.sh --uninstall"
 else

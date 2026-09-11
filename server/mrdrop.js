@@ -121,7 +121,7 @@ async function main() {
   log("");
   log(`  Mr.Drop ${VERSION}   ${cfg.displayName}`);
   log(line);
-  log(`  受信箱  ${cfg.inbox}`);
+  log(`  保存先  ${cfg.inbox}`);
   log(`  送信箱  ${cfg.outbox}`);
   log(line);
   log("  iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:");

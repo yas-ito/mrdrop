@@ -14,8 +14,8 @@
 // 中身（受け取る人から見える名前）:
 //   MrDrop_v<版>_win/はじめる.bat                  ← ダブルクリックするだけ
 //   MrDrop_v<版>_win/いつでも使えるようにする.bat  ← 1回押すと常駐（黒い画面が消える）
-//   MrDrop_v<版>_win/受信箱を変える.bat            ← フォルダ選択で受信箱を変える
-//   MrDrop_v<版>_win/受信箱を開く.bat              ← 受信箱をエクスプローラで開く
+//   MrDrop_v<版>_win/保存先を変える.bat            ← フォルダ選択で保存先を変える
+//   MrDrop_v<版>_win/保存先を開く.bat              ← 保存先をエクスプローラで開く
 //   MrDrop_v<版>_win/取扱説明書.html
 //   MrDrop_v<版>_win/server/…                      ← 本体（外部パッケージゼロ）
 //   MrDrop_v<版>_win/scripts/install-windows.ps1   ← 上の bat が呼ぶ
@@ -101,7 +101,7 @@ const manual = (buf, bundled) => {
 
 // 🔴 bat は ASCII・CRLF。cmd.exe は .bat を CP932 として読むので、日本語が混ざると壊れる。
 //    .gitattributes で CRLF に固定してあるが、ここでも直して検査する（作る側で完結させる）。
-const BATS = ["はじめる.bat", "いつでも使えるようにする.bat", "受信箱を変える.bat", "受信箱を開く.bat"];
+const BATS = ["はじめる.bat", "いつでも使えるようにする.bat", "保存先を変える.bat", "保存先を開く.bat"];
 const bats = BATS.map((n) => {
   let b = read(n);
   if (b.some((c) => c >= 128)) fail(n + " に非ASCIIが混ざっています（cmd が CP932 で読むため壊れます）");

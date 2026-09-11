@@ -1,7 +1,7 @@
 ﻿# Mr.Drop の設定を、非エンジニアでも触れるようにする。
 #
-#   -ChooseInbox    受信箱をフォルダ選択で変える（Mac のメニュー「受信箱を変える…」と同じ）
-#   -OpenInbox      受信箱をエクスプローラで開く（Mac の「受信箱を開く」と同じ）
+#   -ChooseInbox    保存先をフォルダ選択で変える（Mac のメニュー「保存先を変える…」と同じ）
+#   -OpenInbox      保存先をエクスプローラで開く（Mac の「保存先を開く」と同じ）
 #   -MakeResident   窓なしで常駐させる（install-windows.ps1 を呼ぶ。管理者へ昇格する）
 #
 # 🔴 隣の .bat から呼ばれる前提。**日本語はここに置く**（.bat は cmd が CP932 で読むので
@@ -34,7 +34,7 @@ function Read-Config {
   }
   return [pscustomobject]@{
     port   = 48630
-    inbox  = "%USERPROFILE%\Desktop\受信箱"
+    inbox  = "%USERPROFILE%\Desktop\保存先"
     outbox = "%USERPROFILE%\Desktop\送信箱"
     name   = ""
     token  = ""
@@ -98,11 +98,11 @@ function Restart-IfResident {
   }
 }
 
-# ── 受信箱を変える ────────────────────────────────────────
+# ── 保存先を変える ────────────────────────────────────────
 if ($ChooseInbox) {
-  Head "受信箱を変える"
+  Head "保存先を変える"
   $now = Get-InboxPath
-  Say "いまの受信箱: $now"
+  Say "いまの保存先: $now"
   Write-Host ""
   Say "フォルダを選ぶ画面を出します。"
   Say "編集用の素材フォルダを選んでおくと、撮った動画がそのまま作業場所に届きます。"
@@ -116,12 +116,12 @@ if ($ChooseInbox) {
   # 🔴 ShowDialog は STA スレッドでないと黙って失敗する。powershell.exe は既定で STA なので
   #    通常は問題ないが、そうでない環境では理由を出して止める（黙って何も起きないのが最悪）。
   if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
-    Fail "フォルダ選択の画面を出せません（STA ではありません）。`n   隣の「受信箱を変える.bat」から実行してください。"
+    Fail "フォルダ選択の画面を出せません（STA ではありません）。`n   隣の「保存先を変える.bat」から実行してください。"
   }
 
   if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
     Write-Host ""
-    Say "やめました。受信箱は変えていません。"
+    Say "やめました。保存先は変えていません。"
     exit 0
   }
 
@@ -142,14 +142,14 @@ if ($ChooseInbox) {
   Write-Config $cfg
 
   Write-Host ""
-  Say "受信箱を変えました: $new"
+  Say "保存先を変えました: $new"
   if (Restart-IfResident) { Say "常駐を入れ直したので、もう効いています。" }
   else { Warn "「はじめる.bat」で動かしているときは、一度閉じてから押し直してください。" }
   Write-Host ""
   exit 0
 }
 
-# ── 受信箱を開く ──────────────────────────────────────────
+# ── 保存先を開く ──────────────────────────────────────────
 if ($OpenInbox) {
   $p = Get-InboxPath
   if (-not (Test-Path -LiteralPath $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
@@ -202,7 +202,7 @@ if ($MakeResident) {
     Say "パソコンを起動したら、Mr.Drop が勝手に動きます（黒い画面は出ません）。"
     Say "iPhone の Mr.Drop アプリから、そのまま送ってください。"
     Write-Host ""
-    Say "受信箱を変えたいときは「受信箱を変える.bat」"
+    Say "保存先を変えたいときは「保存先を変える.bat」"
     Say "やめたいときは scripts\install-windows.ps1 -Uninstall"
   } else {
     Fail "常駐にできませんでした。上の出力を見てください。"

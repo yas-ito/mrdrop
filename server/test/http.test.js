@@ -1,6 +1,6 @@
 "use strict";
 // 実際にサーバーを立てて、本当に受け取れるかを通しで確かめる。
-// 🔴 いちばん大事なのは「途中で切れたものを受信箱に出さない」こと。ここを必ず踏む。
+// 🔴 いちばん大事なのは「途中で切れたものを保存先に出さない」こと。ここを必ず踏む。
 const fs = require("fs");
 const fsp = require("fs/promises");
 const os = require("os");
@@ -60,8 +60,8 @@ module.exports = async function (t) {
 
     const r3 = await req(port, "PUT", "/put/" + encodeURIComponent("../../nasty.txt"), "X");
     eq(r3.status, 200, "危ない名前でも 200（弾かず、安全な名前に直す）");
-    ok(fs.existsSync(path.join(cfg.inbox, "nasty.txt")), "受信箱の中に落ちる");
-    ok(!fs.existsSync(path.join(base, "nasty.txt")), "🔴 受信箱の外には絶対に出さない");
+    ok(fs.existsSync(path.join(cfg.inbox, "nasty.txt")), "保存先の中に落ちる");
+    ok(!fs.existsSync(path.join(base, "nasty.txt")), "🔴 保存先の外には絶対に出さない");
   });
 
   await suite("途中で切れたものは出さない", async () => {
@@ -76,7 +76,7 @@ module.exports = async function (t) {
       sock.on("error", () => resolve());
     });
     await sleep(300);
-    eq(fs.readdirSync(cfg.inbox).length, before, "受信箱にファイルが増えていない");
+    eq(fs.readdirSync(cfg.inbox).length, before, "保存先にファイルが増えていない");
     ok(!fs.existsSync(path.join(cfg.inbox, "half.bin")), "半端なファイルは残らない");
     const parts = fs.existsSync(path.join(cfg.inbox, PART_DIR))
       ? fs.readdirSync(path.join(cfg.inbox, PART_DIR)) : [];

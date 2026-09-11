@@ -1,6 +1,6 @@
 @echo off
 rem ---------------------------------------------------------------
-rem  Mr.Drop - choose the folder where received files land.
+rem  Mr.Drop - choose the folder where received files are saved.
 rem
 rem  Double-click this file. A folder picker opens. Pick any folder
 rem  (your video editing assets folder is the best use of this).
