@@ -4,7 +4,8 @@
 #   入れる:  bash scripts/install-mac.sh
 #   外す:    bash scripts/install-mac.sh --uninstall
 #
-# 保存先の既定は server/lib/config.js が OS ごとに決める（Mac は ~/Downloads/保存先）。
+# 保存先の既定は server/lib/config.js が OS ごとに決める（Mac は ~/Downloads そのもの）。
+# 🔴 専用のフォルダを作らない（本人決定 2026-09-12）。送信箱はサーバーが起動時に作る。
 # ここで config.json を作るのは MRDROP_INBOX で場所を指定されたときだけ。
 set -euo pipefail
 
@@ -12,7 +13,7 @@ LABEL="jp.yastools.mrdrop"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="$ROOT/config.json"
-INBOX="${MRDROP_INBOX:-$HOME/Downloads/保存先}"
+INBOX="${MRDROP_INBOX:-$HOME/Downloads}"
 LOGDIR="$HOME/Library/Logs/MrDrop"
 
 if [ "${1:-}" = "--uninstall" ]; then
@@ -25,7 +26,7 @@ fi
 NODE="$(command -v node || true)"
 [ -n "$NODE" ] || { echo "🔴 node が見つかりません。brew install node してください" >&2; exit 1; }
 
-mkdir -p "$INBOX" "$HOME/Downloads/送信箱" "$LOGDIR" "$HOME/Library/LaunchAgents"
+mkdir -p "$INBOX" "$LOGDIR" "$HOME/Library/LaunchAgents"
 
 # MRDROP_INBOX で場所を指定されたときだけ config.json を書く。
 # 指定が無ければ何もしない（サーバーが Mac 向けの既定で自分で作る）。
@@ -34,7 +35,7 @@ if [ ! -f "$CONFIG" ] && [ -n "${MRDROP_INBOX:-}" ]; then
 {
   "port": 48630,
   "inbox": "$INBOX",
-  "outbox": "$HOME/Downloads/送信箱",
+  "outbox": "$HOME/Downloads/Mr.Drop送信箱",
   "name": "",
   "token": ""
 }

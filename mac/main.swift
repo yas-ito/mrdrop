@@ -296,7 +296,7 @@ final class App: NSObject, NSApplicationDelegate {
         if let p = readConfig()?["inbox"] as? String {
             return URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
         }
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/保存先")
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
     }
 
     private func readConfig() -> [String: Any]? {
