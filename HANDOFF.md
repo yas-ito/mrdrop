@@ -103,9 +103,18 @@ Windows 版と Mac 版で 1 商品**（本人決定 2026-09-12）。
 | できた商品画像5枚 | `~/Documents/販売品/Mr.Drop/商品画像/`（PNG は git に入れていません） |
 | Mac 版の配布 ZIP | `~/Documents/販売品/Mr.Drop/MrDrop_v1.0.0_mac.zip`（80MB・公証済み） |
 
-🔴 **本文とタグから "AirDrop" を全部外しました。**App Store が Guideline 5.2.5 で
-商標を指摘したので、**店の文面にも同じ言葉を残さない**と決めています。
-そちらの `取扱説明書.html` の165行目にも1か所ありますが、**審査対象ではないので急ぎません**。
+🔴 **"AirDrop" という言葉を、配る物と読み物から全部外しました**（BOOTH の本文・タグ・
+**取扱説明書の両方**・README・`package.json`）。App Store が Guideline 5.2.5 で商標を指摘したので、
+**同じ言葉を店の文面にも残さない**と決めています。
+
+⚠️ **`取扱説明書.html`（Windows 版）も1か所だけ直しました**（165行目・「Windows には AirDrop が無いので」→
+「Windows のパソコンには、iPhone から無線で受け取るしくみが標準では入っていません」）。
+**そちらの領分に手を入れてすみません。**次に ZIP を作るとき、直った文面が入ります。
+`NODE-SETUP` / `NODE-BADGE` の印は触っていません。**テストは 108 件とも通っています。**
+
+🔵 根拠: Apple の [Guidelines for Using Apple Trademarks](https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html) は、
+**製品名に使うのは不可／「compatible with」等の参照は可、ただし帰属表示が必須**としています。
+帰属表示を入れてまで書く価値のある言葉ではない、という判断です。
 
 # 🔴 **お願い: Windows 版の配布 ZIP を作って、BOOTH に上げてください**
 

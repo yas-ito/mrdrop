@@ -2,7 +2,7 @@
   "name": "mrdrop",
   "version": "1.0.0",
   "private": true,
-  "description": "iPhone から同じ Wi-Fi の Windows へ送る（AirDrop の代わり・Mr.Drop）",
+  "description": "iPhone から同じ Wi-Fi の Windows / Mac へ写真・動画・ファイルを送る（Mr.Drop）",
   "main": "server/mrdrop.js",
   "scripts": {
     "start": "node server/mrdrop.js",
