@@ -105,6 +105,11 @@ struct ContentView: View {
             }
             .navigationTitle("Mr.Drop")
             .onAppear { discovery.start() }
+            // 🔴 Discovery は1台だけのとき黙って lastPeer に入れるが、画面の ✓ は peer を見ている。
+            //    そのままだと「一覧に出ているのに、選ばれていないように見える」。
+            .onChange(of: discovery.peers) { _, list in
+                if peer == nil { peer = MrDrop.lastPeer ?? list.first }
+            }
             .onDisappear { discovery.stop() }
             .alert("お知らせ", isPresented: .constant(message != nil)) {
                 Button("わかりました") { message = nil }
@@ -161,7 +166,9 @@ struct ContentView: View {
         } header: {
             Text("送り先の PC")
         } footer: {
-            Text("見つからないときは、PC で Mr.Drop が動いているか、同じ Wi-Fi につながっているかを確かめてください。")
+            // 🔴 ここは最初から見えている。noPeerGuide は6秒待たないと出ないので、
+            //    「送る側だけ入れても動かない」ことは、待たずに分かるようにしておく。
+            Text("このアプリは「送る側」です。受け取るパソコン（Windows / Mac）にも Mr.Drop を入れて動かしてください（yas-tools.booth.pm で手に入ります）。同じ Wi-Fi につながっていれば、自動で見つかります。")
         }
     }
 
@@ -173,6 +180,9 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("見つからないときは").font(.subheadline.bold()).foregroundStyle(.primary)
             Text("• 受け取る側のパソコンで **Mr.Drop（PC 版）** が動いている必要があります")
+            // 🔴 「要る」とだけ書いて入手先を書かないと、入れた人はここで詰まって消す（2026-09-12 本人指摘）。
+            //    買わせるためのリンクは置かない。文字で書く。
+            Text("　PC 版（Windows / Mac）は **yas-tools.booth.pm** で手に入ります")
             Text("• iPhone とパソコンが同じ Wi-Fi につながっているか確かめてください")
             Text("• iPhone の「設定 › プライバシーとセキュリティ › ローカルネットワーク」で Mr.Drop が許可されているか")
             Text("• それでも出ないときは、PC の画面に出ている住所を下に入れてください")
@@ -323,6 +333,12 @@ struct ContentView: View {
         }
     }
 
+    /// 送り先が1つも無いときの言い方。「選んでください」だけだと、
+    /// そもそも PC 版を入れていない人が何をすればいいのか分からない。
+    private var noPeerMessage: String {
+        "先に送り先の PC を選んでください。受け取るパソコン（Windows / Mac）にも Mr.Drop が要ります（yas-tools.booth.pm）。"
+    }
+
     private func currentPeer() -> MrDrop.Peer? {
         if let p = peer { return p }
         if let p = MrDrop.lastPeer { return p }
@@ -371,7 +387,7 @@ struct ContentView: View {
     }
 
     private func sendPhotos(_ items: [PhotosPickerItem]) {
-        guard let p = currentPeer() else { message = "先に送り先の PC を選んでください。"; return }
+        guard let p = currentPeer() else { message = noPeerMessage; return }
         Task {
             for item in items {
                 // 🔴 iOS が書き出し終えるまで `loadTransferable` は返ってこない。
@@ -416,7 +432,7 @@ struct ContentView: View {
     }
 
     private func sendFiles(_ urls: [URL]) {
-        guard let p = currentPeer() else { message = "先に送り先の PC を選んでください。"; return }
+        guard let p = currentPeer() else { message = noPeerMessage; return }
         for u in urls {
             // 「ファイル」アプリのものは許可を取ってから読む
             let needsStop = u.startAccessingSecurityScopedResource()

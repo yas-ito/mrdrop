@@ -12,8 +12,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.0.1"
+    CURRENT_PROJECT_VERSION: "2"
     SWIFT_VERSION: "5.0"
     # 署名は Xcode に任せる（Automatic）。Team は本人のもの。
     # App Store に出す・実機に入れるのに要る。シミュレータだけなら無くても動く
@@ -58,7 +58,9 @@ targets:
         # 🔴 NSBonjourServices を書き忘れると、権限ダイアログすら出ずに「1台も見つからない」だけになる
         NSBonjourServices:
           - _mrdrop._tcp
-        NSLocalNetworkUsageDescription: 同じ Wi-Fi にあるパソコンを探して、写真や動画を送るために使います。
+        # 🔴 これは許可ダイアログにそのまま出る。断られると送り先が一台も見つからないので、
+        #    「何に使うか」だけでなく「断るとどうなるか」まで書く。
+        NSLocalNetworkUsageDescription: 同じ Wi-Fi にあるパソコンを探して、写真や動画を送るために使います。許可しないと、送り先のパソコンを見つけられません。
         # 平文 HTTP の LAN 宛。これが無いと接続そのものが弾かれる
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

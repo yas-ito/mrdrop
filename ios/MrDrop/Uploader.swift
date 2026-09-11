@@ -18,8 +18,18 @@ final class Uploader: NSObject, ObservableObject {
 
     @Published private(set) var jobs: [Job] = []
 
-    /// 速さを出すための開始時刻（taskIdentifier ごと）
+    /// 速さを出すための開始時刻（taskIdentifier ごと）。
+    /// 🔴 2026-09-12 まで**書き込んでいる所が無く**、記録の秒数は常に 0.0・速さは常に「—」だった。
+    ///    送信は main、完了の通知は別のキューから来るので、鍵をかけて触る。
     private var started: [Int: Date] = [:]
+    private let startedLock = NSLock()
+
+    private func markStart(_ id: Int) {
+        startedLock.lock(); started[id] = Date(); startedLock.unlock()
+    }
+    private func takeStart(_ id: Int) -> Date? {
+        startedLock.lock(); let d = started.removeValue(forKey: id); startedLock.unlock(); return d
+    }
 
     private var session: URLSession!
     /// 🔴 画面を開いている間だけ使う、普通のセッション。
@@ -108,6 +118,7 @@ final class Uploader: NSObject, ObservableObject {
         MrDrop.log("転送", "開始 \(filename) \(size ?? -1) バイト → \(peer.host):\(peer.port) 経路=\(whileWatching ? "前面" : "背面")")
         let job = Job(id: task.taskIdentifier, filename: filename, total: size ?? 0)
         DispatchQueue.main.async { self.jobs.insert(job, at: 0) }
+        markStart(task.taskIdentifier)
         task.resume()
         return true
     }
@@ -138,14 +149,14 @@ extension Uploader: URLSessionDataDelegate {
         }
         let status = (task.response as? HTTPURLResponse)?.statusCode ?? 0
         let name = task.originalRequest?.url?.lastPathComponent ?? "?"
+        let startedAt = takeStart(task.taskIdentifier)
         if let e = error {
             MrDrop.log("転送", "🔴 失敗 \(name) \(MrDrop.describe(e))")
         } else {
-            let secs = -(started[task.taskIdentifier]?.timeIntervalSinceNow ?? 0)
+            let secs = -(startedAt?.timeIntervalSinceNow ?? 0)
             let mbps = secs > 0.2 ? String(format: "%.1f MB/秒", Double(task.countOfBytesSent) / secs / 1_048_576) : "—"
             MrDrop.log("転送", "終了 \(name) HTTP \(status) \(task.countOfBytesSent) バイト \(String(format: "%.1f", secs))秒 \(mbps)")
         }
-        started[task.taskIdentifier] = nil
         update(task.taskIdentifier) { j in
             j.finished = true
             if let e = error {

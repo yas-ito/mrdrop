@@ -56,7 +56,8 @@ final class ShareViewController: UIViewController {
 
     private func process() async {
         guard let peer = MrDrop.lastPeer else {
-            finish("先に Mr.Drop アプリを一度開いて、送り先の PC を選んでください。")
+            finish("先に Mr.Drop アプリを一度開いて、送り先の PC を選んでください。\n受け取るパソコン（Windows / Mac）にも Mr.Drop が要ります。",
+                   ok: false)
             return
         }
 
@@ -73,7 +74,8 @@ final class ShareViewController: UIViewController {
             }
         }
 
-        finish(count > 0 ? "\(peer.name) へ送っています（\(count)件）" : "送れるものがありませんでした。")
+        finish(count > 0 ? "\(peer.name) へ送っています（\(count)件）" : "送れるものがありませんでした。",
+               ok: count > 0)
     }
 
     /// 🔴 **型を自分で選んではいけない。**Photos は頼まれた型に「変換して」渡してくる。
@@ -134,11 +136,13 @@ final class ShareViewController: UIViewController {
         }
     }
 
-    private func finish(_ text: String) {
+    /// 🔴 うまくいった時と、そうでない時で閉じるまでの時間を変える。
+    ///    どちらも 1.2 秒だと、**読ませたい文章ほど読む前に消える**（2026-09-12 に気づいた）。
+    private func finish(_ text: String, ok: Bool = true) {
         spinner.stopAnimating()
         spinner.isHidden = true
         label.text = text
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + (ok ? 1.2 : 4.5)) { [weak self] in
             self?.extensionContext?.completeRequest(returningItems: nil)
         }
     }
