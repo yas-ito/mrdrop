@@ -3,8 +3,14 @@
 #
 #   bash build/make-mac-app.sh                  作る → 署名 → 公証 → zip（配布用・数分かかる）
 #   bash build/make-mac-app.sh --no-notarize    署名まで（手元で動かして確かめる用・公証は飛ばす）
+#   bash build/make-mac-app.sh --repack-only    作らない。**すでにある .app を zip し直すだけ**
 #
-# できる物: _build/MrDrop_v<版>_mac.zip（中身は Mr.Drop.app 1つ。展開してダブルクリックするだけ）
+# できる物: _build/MrDrop_v<版>_mac.zip
+#   展開すると MrDrop_v<版>_mac/ ができ、中に Mr.Drop.app と 取扱説明書-Mac.html が入る。
+#   🔴 2026-09-12 までは .app 1つだけで、**説明書がどこにも配られていなかった**（Windows 側の指摘）。
+#      商品説明は「取扱説明書つき」と約束しているので、必ず一緒に入れる。
+#      .app の中に入れない理由: 中身を変えると署名と公証をやり直すことになるため。
+#      zip に並べるだけなら .app は無傷で、公証の貼り付けもそのまま残る（この下で読み返して確かめる）。
 #
 # Mr.Drop.app の中身:
 #   Contents/MacOS/MrDrop              ← mac/main.swift（arm64 + x86_64 の universal）
@@ -33,15 +39,59 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NODE_VER="v24.20.0"                              # nodejs.org の LTS
 PROFILE="${NOTARY_PROFILE:-ichigeki-notary}"     # notarytool の資格情報（一撃極と共用）
 NOTARIZE=1
+REPACK=0
 for a in "$@"; do
   case "$a" in
     --no-notarize) NOTARIZE=0 ;;
+    --repack-only) REPACK=1 ;;
     *) echo "🔴 知らない引数: $a" >&2; exit 1 ;;
   esac
 done
 
 fail() { echo "🔴 $*" >&2; exit 1; }
 say()  { echo "  $*"; }
+
+package_zip() {
+  echo "=== 6. zip にして読み返す ==="
+  DOC="$REPO/取扱説明書-Mac.html"
+  [ -f "$DOC" ] || fail "取扱説明書-Mac.html が無い（商品説明が「説明書つき」と約束している）"
+  ZIP="$REPO/_build/MrDrop_v${VERSION}_mac.zip"
+  STAGE="$OUT/stage/MrDrop_v${VERSION}_mac"
+  rm -rf "$OUT/stage"; mkdir -p "$STAGE"
+  ditto "$APP" "$STAGE/Mr.Drop.app"          # cp ではなく ditto（署名と権限を保つ）
+  cp "$DOC" "$STAGE/取扱説明書-Mac.html"
+  rm -f "$ZIP"
+  ditto -c -k --sequesterRsrc --keepParent "$STAGE" "$ZIP"
+
+  T="$OUT/verify"
+  rm -rf "$T"; mkdir -p "$T"
+  ditto -x -k "$ZIP" "$T"
+  R="$T/MrDrop_v${VERSION}_mac"
+  [ -f "$R/取扱説明書-Mac.html" ] || fail "zip に取扱説明書が入っていない"
+  codesign --verify --deep --strict "$R/Mr.Drop.app" || fail "zip から出した .app の署名が壊れている"
+  [ -x "$R/Mr.Drop.app/Contents/MacOS/node" ] || fail "zip から出した node に実行権限が無い"
+  if [ "$NOTARIZE" = 1 ]; then
+    xcrun stapler validate "$R/Mr.Drop.app" >/dev/null || fail "zip から出した .app に公証が貼られていない"
+  fi
+  say "zip から出し直しても署名・実行権限・公証とも無事。説明書も入っている"
+  rm -rf "$OUT/stage"
+}
+
+# --repack-only: 作り直さず、すでにある .app を zip し直すだけ。
+# 署名も公証もやり直さない（.app に触らないので、貼り付けたままで有効）。
+if [ "$REPACK" = 1 ]; then
+  VERSION="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$REPO/package.json" | head -1)"
+  [ -n "$VERSION" ] || fail "package.json の version が読めない"
+  OUT="$REPO/_build/mac"
+  APP="$OUT/Mr.Drop.app"
+  [ -d "$APP" ] || fail "$APP が無い（先に公証まで通した .app が要る）"
+  xcrun stapler validate "$APP" >/dev/null || fail "その .app には公証が貼られていない"
+  package_zip
+  echo ""
+  echo "できあがり: $ZIP"
+  echo "  サイズ: $(du -h "$ZIP" | cut -f1 | tr -d ' ')"
+  exit 0
+fi
 
 echo "=== 0. 前提 ==="
 command -v swiftc >/dev/null || fail "swiftc が無い（Xcode を入れて xcode-select を通す）"
@@ -148,19 +198,8 @@ else
   echo "=== 5. 公証は飛ばした（--no-notarize）。配ってはいけない ==="
 fi
 
-echo "=== 6. zip にして読み返す ==="
-ZIP="$REPO/_build/MrDrop_v${VERSION}_mac.zip"
-rm -f "$ZIP"
-ditto -c -k --keepParent "$APP" "$ZIP"
-T="$OUT/verify"
-rm -rf "$T"; mkdir -p "$T"
-ditto -x -k "$ZIP" "$T"
-codesign --verify --deep --strict "$T/Mr.Drop.app" || fail "zip から出した .app の署名が壊れている"
-[ -x "$T/Mr.Drop.app/Contents/MacOS/node" ] || fail "zip から出した node に実行権限が無い"
-if [ "$NOTARIZE" = 1 ]; then
-  xcrun stapler validate "$T/Mr.Drop.app" >/dev/null || fail "zip から出した .app に公証が貼られていない"
-fi
-say "zip から出し直しても署名・実行権限とも無事"
+
+package_zip
 
 echo ""
 echo "できあがり: $ZIP"
