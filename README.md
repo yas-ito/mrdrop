@@ -40,7 +40,7 @@ node server/mrdrop.js
   Mr.Drop 1.0.0   MY-PC
 ────────────────────────────────────────────────────
   保存先  C:\Users\<あなた>\Downloads
-  送信箱  C:\Users\<あなた>\Downloads\Mr.Drop送信箱
+  送信箱  C:\Users\<あなた>\Desktop\Mr.Drop送信箱
 ────────────────────────────────────────────────────
   iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:
     http://my-pc.local:48630
@@ -100,7 +100,7 @@ bash scripts/install-mac.sh --uninstall  # 外す
 ```
 
 置き場所の既定は OS で変わります（上は Windows）。Mac では `~/Downloads`・
-`~/Downloads/Mr.Drop送信箱` になります。`~` と `%USERPROFILE%` はどちらの OS でも家に開くので、
+`~/Desktop/Mr.Drop送信箱` になります。**送信箱だけはデスクトップ**で、両OSとも同じです。`~` と `%USERPROFILE%` はどちらの OS でも家に開くので、
 **Windows で書いた `config.json` を Mac へ持っていってもそのまま読めます。**
 
 | 項目 | 意味 |

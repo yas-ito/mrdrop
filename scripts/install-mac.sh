@@ -6,6 +6,8 @@
 #
 # 保存先の既定は server/lib/config.js が OS ごとに決める（Mac は ~/Downloads そのもの）。
 # 🔴 専用のフォルダを作らない（本人決定 2026-09-12）。送信箱はサーバーが起動時に作る。
+# 🔴 送信箱だけは ~/Desktop/Mr.Drop送信箱（本人指示 2026-09-12）。iPhone へ渡す物を
+#    置く場所なので、目に見えてすぐ放り込めるデスクトップに。両OSで同じにしてある。
 # ここで config.json を作るのは MRDROP_INBOX で場所を指定されたときだけ。
 set -euo pipefail
 
@@ -35,7 +37,7 @@ if [ ! -f "$CONFIG" ] && [ -n "${MRDROP_INBOX:-}" ]; then
 {
   "port": 48630,
   "inbox": "$INBOX",
-  "outbox": "$HOME/Downloads/Mr.Drop送信箱",
+  "outbox": "$HOME/Desktop/Mr.Drop送信箱",
   "name": "",
   "token": ""
 }

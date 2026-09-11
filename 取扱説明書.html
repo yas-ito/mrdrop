@@ -154,7 +154,7 @@
       <div class="quickstart-title">まず、これだけ</div>
       <ol>
         <li>ZIP を右クリック →「<strong>すべて展開</strong>」（中身だけ取り出すと動きません）</li>
-        <li><strong>はじめる.bat</strong> をダブルクリック</li>
+        <li><strong>はじめる.bat</strong> をダブルクリック（1回だけ。窓は残りません）</li>
         <li>iPhone に <strong>Mr.Drop アプリ</strong>を入れる（App Store で<strong>無料</strong>）</li>
         <li>写真アプリの<strong>共有ボタン</strong>から「Mr.Drop」を選ぶ。それだけで PC へ届きます</li>
       </ol>
@@ -193,14 +193,20 @@
       <div class="step-row">
         <div class="step-num">1</div>
         <div class="step-body">
-          <div class="step-label">はじめる.bat をダブルクリック</div>
+          <div class="step-label">はじめる.bat をダブルクリック（1回だけ）</div>
           <div class="win-file"><span class="win-file-icon">⚙️</span> はじめる.bat</div>
-          <p style="margin-top:8px">黒い画面が出て、こう表示されます。<strong>この画面は閉じないでください。</strong>
-             閉じると受け取れなくなります（送っている間だけで構いません）。</p>
+          <p style="margin-top:8px">Windows が「このアプリがデバイスに変更を加えることを許可しますか」と聞いてきます。
+             <strong>「はい」を押してください。</strong>ファイアウォールを開けるために必要です。</p>
+          <div class="good">
+            <div class="good-title">✓ これで終わりです</div>
+            <p><strong>次からは何もしなくて大丈夫です。</strong>パソコンを起動したら Mr.Drop が勝手に動きます。
+               <strong>黒い画面は出たままになりません。</strong></p>
+          </div>
+          <p style="margin-top:14px">動き出すと、こう表示されます（この画面は閉じて構いません）。</p>
           <pre>  Mr.Drop 1.0.0   MY-PC
 ────────────────────────────────────────────────────
   保存先  C:\Users\あなた\Downloads
-  送信箱  C:\Users\あなた\Downloads\Mr.Drop送信箱
+  送信箱  C:\Users\あなた\Desktop\Mr.Drop送信箱
 ────────────────────────────────────────────────────
   iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:
     http://my-pc.local:48630
@@ -284,7 +290,8 @@
     <ol>
       <li>一度「はじめる.bat」を動かすと、隣に <code>config.json</code> ができます</li>
       <li>メモ帳で開いて <code>"token": ""</code> を <code>"token": "すきな合言葉"</code> に書き換えます</li>
-      <li>黒い画面を閉じて、もう一度「はじめる.bat」を押します</li>
+      <li>「保存先を変える.bat」を押して「キャンセル」すると、設定が読み直されます<br>
+        <span class="hint" style="display:block">または、パソコンを再起動しても読み直されます</span></li>
       <li>iPhone からは <code>http://…:48630/?t=すきな合言葉</code> で開きます</li>
     </ol>
 
@@ -319,31 +326,15 @@
       <tr><td><code>name</code></td><td>iPhone に見える名前。空なら PC 名になります</td></tr>
       <tr><td><code>token</code></td><td>合言葉。空なら合言葉なしです</td></tr>
     </table>
-    <h2>黒い画面を出さないようにする（おすすめ）</h2>
-    <p>毎回「はじめる.bat」を押して、黒い画面を開いたままにするのが面倒な方へ。
-       <strong>1回押すだけで、パソコンを起動したら勝手に動くようになります。黒い画面も出ません。</strong></p>
-    <div class="steps">
-      <div class="step-row">
-        <div class="step-num">1</div>
-        <div class="step-body">
-          <div class="step-label">いつでも使えるようにする.bat をダブルクリック</div>
-          <div class="win-file"><span class="win-file-icon">⚙️</span> いつでも使えるようにする.bat</div>
-          <p style="margin-top:8px">Windows が「このアプリがデバイスに変更を加えることを許可しますか」と聞いてきます。
-             <strong>「はい」を押してください。</strong>ファイアウォールを開けるために必要です。</p>
-        </div>
-      </div>
-      <div class="step-row">
-        <div class="step-num">2</div>
-        <div class="step-body">
-          <div class="step-label">これで終わりです</div>
-          <p>もう「はじめる.bat」を押す必要はありません。パソコンを起動したら Mr.Drop が動いています。
-             iPhone から、そのまま送ってください。</p>
-        </div>
-      </div>
-    </div>
-    <div class="hint">やめたいときは <code>scripts</code> フォルダの中で
-      <code>install-windows.ps1 -Uninstall</code> を実行します（保存先の中身はそのままです）。
-      今どうなっているかは <code>-Status</code> で分かります。</div>
+    <h2>やめたいとき・1回だけ動かしたいとき</h2>
+    <p>Mr.Drop はパソコンを起動すると勝手に動きます。<strong>ふだんは何もしなくて構いません。</strong></p>
+    <table>
+      <tr><th>やめたいとき</th><td><code>scripts</code> フォルダの <code>install-windows.ps1 -Uninstall</code>
+        （保存先と送信箱の中身はそのままです）</td></tr>
+      <tr><th>今どうなっているか</th><td>同じフォルダの <code>install-windows.ps1 -Status</code></td></tr>
+      <tr><th>入れずに1回だけ動かす</th><td><code>scripts\run-once.bat</code>。黒い画面が開いている間だけ動き、
+        閉じると止まります。<strong>何も残りません</strong></td></tr>
+    </table>
 
   </div>
   <div class="footer">
@@ -378,8 +369,10 @@
     </div>
 
     <div class="qa-item">
-      <div class="qa-q">黒い画面を閉じてしまいました</div>
-      <div class="qa-a">もう一度「はじめる.bat」を押せば戻ります。送っている途中で閉じた場合、そのファイルは届いていません
+      <div class="qa-q">動いているか分かりません</div>
+      <div class="qa-a">iPhone の Mr.Drop アプリを開いて、このパソコンが一覧に出れば動いています。
+        出ないときは <code>scripts\install-windows.ps1 -Status</code> で状態が分かります。
+        送っている途中でパソコンを切った場合、そのファイルは届いていません
         （中途半端なファイルは残らないようにしてあります）。</div>
     </div>
 

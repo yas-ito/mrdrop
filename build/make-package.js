@@ -12,14 +12,14 @@
 //        https://raw.githubusercontent.com/nodejs/node/v<版>/LICENSE
 //
 // 中身（受け取る人から見える名前）:
-//   MrDrop_v<版>_win/はじめる.bat                  ← ダブルクリックするだけ
-//   MrDrop_v<版>_win/いつでも使えるようにする.bat  ← 1回押すと常駐（黒い画面が消える）
-//   MrDrop_v<版>_win/保存先を変える.bat            ← フォルダ選択で保存先を変える
-//   MrDrop_v<版>_win/保存先を開く.bat              ← 保存先をエクスプローラで開く
+//   MrDrop_v<版>_win/はじめる.bat                 ← 🔴 1回押すと常駐（黒い画面は出ない）
+//   MrDrop_v<版>_win/保存先を変える.bat           ← フォルダ選択で保存先を変える
+//   MrDrop_v<版>_win/保存先を開く.bat             ← 保存先をエクスプローラで開く
 //   MrDrop_v<版>_win/取扱説明書.html
-//   MrDrop_v<版>_win/server/…                      ← 本体（外部パッケージゼロ）
-//   MrDrop_v<版>_win/scripts/install-windows.ps1   ← 上の bat が呼ぶ
-//   MrDrop_v<版>_win/scripts/settings-windows.ps1  ← 上の bat が呼ぶ（日本語の案内はここ）
+//   MrDrop_v<版>_win/server/…                     ← 本体（外部パッケージゼロ）
+//   MrDrop_v<版>_win/scripts/run-once.bat         ← 入れずに1回だけ動かしたい人用
+//   MrDrop_v<版>_win/scripts/install-windows.ps1  ← 上の bat が呼ぶ
+//   MrDrop_v<版>_win/scripts/settings-windows.ps1 ← 上の bat が呼ぶ（日本語の案内はここ）
 //   MrDrop_v<版>_win/node/node.exe           ← --with-node のときだけ
 //
 // 🔴 **物を足さない。**最後に「中身がこの一覧とちょうど同じか」を数えて検査している。
@@ -101,7 +101,7 @@ const manual = (buf, bundled) => {
 
 // 🔴 bat は ASCII・CRLF。cmd.exe は .bat を CP932 として読むので、日本語が混ざると壊れる。
 //    .gitattributes で CRLF に固定してあるが、ここでも直して検査する（作る側で完結させる）。
-const BATS = ["はじめる.bat", "いつでも使えるようにする.bat", "保存先を変える.bat", "保存先を開く.bat"];
+const BATS = ["はじめる.bat", "保存先を変える.bat", "保存先を開く.bat", "scripts/run-once.bat"];
 const bats = BATS.map((n) => {
   let b = read(n);
   if (b.some((c) => c >= 128)) fail(n + " に非ASCIIが混ざっています（cmd が CP932 で読むため壊れます）");

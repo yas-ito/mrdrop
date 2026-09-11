@@ -1,34 +1,28 @@
 @echo off
 rem ---------------------------------------------------------------
-rem  Mr.Drop - start the receiver on this PC.
+rem  Mr.Drop - set this PC up to receive, once and for all.
 rem
-rem  Just double-click this file, then open the shown address on
-rem  your iPhone. Keep this window open while you send files.
+rem  Double-click this file. It opens the firewall (private network
+rem  only) and makes Mr.Drop start by itself every time you log on.
+rem  No black window stays open. You only do this once.
+rem
+rem  Windows will ask for permission - that is for the firewall.
+rem
+rem  Just want to run it this once, without installing anything?
+rem  Use scripts\run-once.bat instead.
 rem
 rem  NOTE (for maintainers): ASCII only, CRLF.
 rem  cmd.exe reads .bat as CP932 on Japanese Windows, so non-ASCII
 rem  text in this file would break. Japanese wording belongs in
-rem  the HTML manual, not here.
+rem  scripts\settings-windows.ps1 and the HTML manual, not here.
 rem ---------------------------------------------------------------
 setlocal
 cd /d "%~dp0"
 
-rem 1) node.exe shipped next to this file (the packaged version).
-set "NODE=%~dp0node\node.exe"
-if exist "%NODE%" goto run
-
-rem 2) Source checkout: use the Node.js installed on this PC.
-where node >nul 2>nul
-if errorlevel 1 goto no_node
-set "NODE=node"
-
-:run
 if not exist "%~dp0server\mrdrop.js" goto no_server
-"%NODE%" "%~dp0server\mrdrop.js" %*
-echo.
-echo ---------------------------------------------------------------
-echo  Mr.Drop stopped. You can close this window.
-echo ---------------------------------------------------------------
+if not exist "%~dp0scripts\settings-windows.ps1" goto no_scripts
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\settings-windows.ps1" -MakeResident
 pause
 exit /b 0
 
@@ -39,9 +33,9 @@ echo.
 pause
 exit /b 1
 
-:no_node
-echo [ERROR] Node.js was not found, and no bundled node\node.exe.
-echo         Get Node.js (LTS) from https://nodejs.org/ja
+:no_scripts
+echo [ERROR] scripts\settings-windows.ps1 was not found.
+echo         Extract the whole ZIP, keeping the folders together.
 echo.
 pause
 exit /b 1

@@ -38,7 +38,7 @@ function Read-Config {
     #    一度も起動していない人が先に「保存先を変える.bat」を押したとき、
     #    間違った既定が config.json に書き込まれて固定される（Mac 側の指摘 2026-09-12）。
     inbox  = "%USERPROFILE%\Downloads"
-    outbox = "%USERPROFILE%\Downloads\Mr.Drop送信箱"
+    outbox = "%USERPROFILE%\Desktop\Mr.Drop送信箱"
     name   = ""
     token  = ""
   }
@@ -162,8 +162,8 @@ if ($OpenInbox) {
 
 # ── 常駐にする ────────────────────────────────────────────
 if ($MakeResident) {
-  Head "いつでも使えるようにする"
-  Say "これから、次の2つをやります。"
+  Head "Mr.Drop を使えるようにします"
+  Say "これから、次の2つをやります。1回だけです。"
   Say "  1. ファイアウォールを開ける（同じ Wi-Fi の中だけ）"
   Say "  2. パソコンを起動したら、勝手に動くようにする（黒い画面は出ません）"
   Write-Host ""
@@ -190,7 +190,7 @@ if ($MakeResident) {
       Start-Process powershell -Verb RunAs -Wait -ArgumentList `
         "-NoProfile","-ExecutionPolicy","Bypass","-EncodedCommand",$b64
     } catch {
-      Fail "「はい」が押されなかったので、設定できませんでした。もう一度やり直してください。"
+      Fail "「はい」が押されなかったので、設定できませんでした。`n   もう一度「はじめる.bat」を押して、「はい」を選んでください。`n   どうしても入れたくないときは scriptsun-once.bat で、1回だけ動かせます。"
     }
     if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log }
     else { Fail "設定できませんでした。もう一度やり直してください。" }
