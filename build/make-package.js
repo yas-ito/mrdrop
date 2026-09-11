@@ -12,10 +12,14 @@
 //        https://raw.githubusercontent.com/nodejs/node/v<版>/LICENSE
 //
 // 中身（受け取る人から見える名前）:
-//   MrDrop_v<版>_win/はじめる.bat            ← ダブルクリックするだけ
+//   MrDrop_v<版>_win/はじめる.bat                  ← ダブルクリックするだけ
+//   MrDrop_v<版>_win/いつでも使えるようにする.bat  ← 1回押すと常駐（黒い画面が消える）
+//   MrDrop_v<版>_win/受信箱を変える.bat            ← フォルダ選択で受信箱を変える
+//   MrDrop_v<版>_win/受信箱を開く.bat              ← 受信箱をエクスプローラで開く
 //   MrDrop_v<版>_win/取扱説明書.html
-//   MrDrop_v<版>_win/server/…                ← 本体（外部パッケージゼロ）
-//   MrDrop_v<版>_win/scripts/install-windows.ps1  ← ずっと使う人だけ
+//   MrDrop_v<版>_win/server/…                      ← 本体（外部パッケージゼロ）
+//   MrDrop_v<版>_win/scripts/install-windows.ps1   ← 上の bat が呼ぶ
+//   MrDrop_v<版>_win/scripts/settings-windows.ps1  ← 上の bat が呼ぶ（日本語の案内はここ）
 //   MrDrop_v<版>_win/node/node.exe           ← --with-node のときだけ
 //
 // 🔴 **物を足さない。**最後に「中身がこの一覧とちょうど同じか」を数えて検査している。
@@ -97,18 +101,26 @@ const manual = (buf, bundled) => {
 
 // 🔴 bat は ASCII・CRLF。cmd.exe は .bat を CP932 として読むので、日本語が混ざると壊れる。
 //    .gitattributes で CRLF に固定してあるが、ここでも直して検査する（作る側で完結させる）。
-let bat = read("はじめる.bat");
-if (bat.some((c) => c >= 128)) fail("はじめる.bat に非ASCIIが混ざっています（cmd が CP932 で読むため壊れます）");
-bat = Buffer.from(bat.toString("latin1").replace(/\r\n/g, "\n").replace(/\n/g, "\r\n"), "latin1");
+const BATS = ["はじめる.bat", "いつでも使えるようにする.bat", "受信箱を変える.bat", "受信箱を開く.bat"];
+const bats = BATS.map((n) => {
+  let b = read(n);
+  if (b.some((c) => c >= 128)) fail(n + " に非ASCIIが混ざっています（cmd が CP932 で読むため壊れます）");
+  b = Buffer.from(b.toString("latin1").replace(/\r\n/g, "\n").replace(/\n/g, "\r\n"), "latin1");
+  return [n, b];
+});
 
 // 🔴 ps1 は BOM 付き UTF-8。BOM が無いと PowerShell 5.1 が CP932 として読み、日本語で全滅する。
-const ps1 = read("scripts/install-windows.ps1");
-if (!(ps1[0] === 0xef && ps1[1] === 0xbb && ps1[2] === 0xbf)) {
-  fail("scripts/install-windows.ps1 に BOM がありません（PowerShell 5.1 が日本語を読めなくなります）");
-}
+const PS1S = ["scripts/install-windows.ps1", "scripts/settings-windows.ps1"];
+const ps1s = PS1S.map((n) => {
+  const b = read(n);
+  if (!(b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf)) {
+    fail(n + " に BOM がありません（PowerShell 5.1 が日本語を読めなくなります）");
+  }
+  return [n, b];
+});
 
 const items = [
-  ["はじめる.bat", bat],
+  ...bats,
   ["取扱説明書.html", manual(read("取扱説明書.html"), nodeExe)],
   ["server/mrdrop.js", read("server/mrdrop.js")],
   ["server/lib/config.js", read("server/lib/config.js")],
@@ -116,7 +128,7 @@ const items = [
   ["server/lib/mdns.js", read("server/lib/mdns.js")],
   ["server/lib/names.js", read("server/lib/names.js")],
   ["server/lib/ui.js", read("server/lib/ui.js")],
-  ["scripts/install-windows.ps1", ps1],
+  ...ps1s,
 ];
 const dirs = ["server/", "server/lib/", "scripts/"];
 

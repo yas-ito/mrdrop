@@ -288,8 +288,29 @@
       <li>iPhone からは <code>http://…:48630/?t=すきな合言葉</code> で開きます</li>
     </ol>
 
-    <h2>置き場所と設定</h2>
-    <p>「はじめる.bat」の隣にできる <code>config.json</code> を書き換えると、置き場所や番号を変えられます。</p>
+    <h2>受信箱を変える</h2>
+    <p>届いたものが入るフォルダは、<strong>後から自由に変えられます。</strong></p>
+    <div class="steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-label">受信箱を変える.bat をダブルクリック</div>
+          <div class="win-file"><span class="win-file-icon">⚙️</span> 受信箱を変える.bat</div>
+          <p style="margin-top:8px">フォルダを選ぶ画面が出ます。選んで「OK」を押すだけです。
+             常駐させている場合は、そのまま新しい受信箱で動き出します。</p>
+        </div>
+      </div>
+    </div>
+    <div class="good">
+      <div class="good-title">✓ いちばんおすすめの使い方</div>
+      <p>受信箱を<strong>動画編集の素材フォルダ</strong>にしておくと、iPhone で撮った素材が、
+         そのまま編集用のフォルダに落ちてきます。<strong>取り込みの手間がまるごと無くなります。</strong></p>
+    </div>
+    <p><strong>受信箱を開く.bat</strong> を押すと、いまの受信箱をそのまま開けます。</p>
+
+    <h2>こまかい設定（触らなくても使えます）</h2>
+    <p>「はじめる.bat」の隣にできる <code>config.json</code> を書き換えると、番号や名前も変えられます。
+       <strong>受信箱を変えるだけなら、上の「受信箱を変える.bat」で足ります。</strong></p>
     <table>
       <tr><th>項目</th><th>意味</th></tr>
       <tr><td><code>port</code></td><td>使う番号。初期値は 48630。他のソフトとぶつかったときだけ変えてください</td></tr>
@@ -298,26 +319,31 @@
       <tr><td><code>name</code></td><td>iPhone に見える名前。空なら PC 名になります</td></tr>
       <tr><td><code>token</code></td><td>合言葉。空なら合言葉なしです</td></tr>
     </table>
-    <div class="good">
-      <div class="good-title">✓ 使い道のひとつ</div>
-      <p><code>inbox</code> を<strong>動画編集の素材フォルダ</strong>にしておくと、iPhone で撮った素材が、
-         そのまま編集用のフォルダに落ちてきます。取り込みの手間がまるごと無くなります。</p>
+    <h2>黒い画面を出さないようにする（おすすめ）</h2>
+    <p>毎回「はじめる.bat」を押して、黒い画面を開いたままにするのが面倒な方へ。
+       <strong>1回押すだけで、パソコンを起動したら勝手に動くようになります。黒い画面も出ません。</strong></p>
+    <div class="steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-label">いつでも使えるようにする.bat をダブルクリック</div>
+          <div class="win-file"><span class="win-file-icon">⚙️</span> いつでも使えるようにする.bat</div>
+          <p style="margin-top:8px">Windows が「このアプリがデバイスに変更を加えることを許可しますか」と聞いてきます。
+             <strong>「はい」を押してください。</strong>ファイアウォールを開けるために必要です。</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-label">これで終わりです</div>
+          <p>もう「はじめる.bat」を押す必要はありません。パソコンを起動したら Mr.Drop が動いています。
+             iPhone から、そのまま送ってください。</p>
+        </div>
+      </div>
     </div>
-
-    <h2>ずっと使えるようにする（任意）</h2>
-    <p>毎回「はじめる.bat」を押すのが面倒なら、Windows にログインしたら勝手に動くようにできます。
-       <strong>黒い画面も出なくなります。</strong></p>
-    <ol>
-      <li><code>scripts</code> フォルダを開く</li>
-      <li><code>install-windows.ps1</code> を右クリック →「<strong>PowerShell で実行</strong>」<br>
-        <span class="hint" style="display:block">うまくいかないときは、スタートを右クリック →「ターミナル（管理者）」を開き、
-        <code>cd</code> のあとに <code>scripts</code> フォルダをドラッグしてから <code>.\install-windows.ps1</code> と打ちます。</span></li>
-    </ol>
-    <p>ファイアウォールを開け、自動で立ち上がるように登録します。<strong>管理者の権限が要ります。</strong></p>
-    <table>
-      <tr><th>やめたいとき</th><td><code>.\install-windows.ps1 -Uninstall</code>（受信箱の中身はそのままです）</td></tr>
-      <tr><th>今どうなっているか</th><td><code>.\install-windows.ps1 -Status</code></td></tr>
-    </table>
+    <div class="hint">やめたいときは <code>scripts</code> フォルダの中で
+      <code>install-windows.ps1 -Uninstall</code> を実行します（受信箱の中身はそのままです）。
+      今どうなっているかは <code>-Status</code> で分かります。</div>
 
   </div>
   <div class="footer">
