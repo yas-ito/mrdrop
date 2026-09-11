@@ -29,6 +29,20 @@ module.exports = async function (t) {
     ok(outbox !== inbox, "🔴 送信箱と保存先が同じ場所になっていない");
   });
 
+  // 🔴 settings-windows.ps1 の Read-Config にも同じ既定が書いてある。
+  //    ここがずれると、一度も起動していない人が先に「保存先を変える.bat」を押したとき、
+  //    間違った既定が config.json に書き込まれて固定される（Mac 側の指摘 2026-09-12・実際にずれていた）。
+  //    手で揃えるのは必ずまた外すので、機械で突き合わせる。
+  suite("置き場所 — PowerShell 側の既定と食い違っていない", () => {
+    const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
+    if (!fs.existsSync(ps1)) { ok(true, "settings-windows.ps1 が無い（配布物の中では省かれる）"); return; }
+    const src = fs.readFileSync(ps1, "utf8");
+    const pick = (k) => (src.match(new RegExp(k + String.raw`\s*=\s*"([^"]+)"`)) || [])[1];
+    eq(pick("inbox"), DEFAULTS.inbox, "inbox の既定がそろっている");
+    eq(pick("outbox"), DEFAULTS.outbox, "outbox の既定がそろっている");
+    eq(String((src.match(/port\s*=\s*(\d+)/) || [])[1]), String(DEFAULTS.port), "port の既定がそろっている");
+  });
+
   suite("置き場所 — Windows で書いた config.json を Mac へ持っていっても読める", () => {
     eq(path.resolve(expand("%USERPROFILE%\\Downloads\\素材")),
        path.join(os.homedir(), "Downloads", "素材"),

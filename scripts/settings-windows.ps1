@@ -34,8 +34,11 @@ function Read-Config {
   }
   return [pscustomobject]@{
     port   = 48630
-    inbox  = "%USERPROFILE%\Desktop\保存先"
-    outbox = "%USERPROFILE%\Desktop\送信箱"
+    # 🔴 server/lib/config.js の DEFAULTS と必ず同じにする。ここがずれると、
+    #    一度も起動していない人が先に「保存先を変える.bat」を押したとき、
+    #    間違った既定が config.json に書き込まれて固定される（Mac 側の指摘 2026-09-12）。
+    inbox  = "%USERPROFILE%\Downloads"
+    outbox = "%USERPROFILE%\Downloads\Mr.Drop送信箱"
     name   = ""
     token  = ""
   }

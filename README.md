@@ -39,8 +39,8 @@ node server/mrdrop.js
 ```
   Mr.Drop 1.0.0   MY-PC
 ────────────────────────────────────────────────────
-  保存先  C:\Users\<あなた>\Desktop\保存先
-  送信箱  C:\Users\<あなた>\Desktop\送信箱
+  保存先  C:\Users\<あなた>\Downloads
+  送信箱  C:\Users\<あなた>\Downloads\Mr.Drop送信箱
 ────────────────────────────────────────────────────
   iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:
     http://my-pc.local:48630
