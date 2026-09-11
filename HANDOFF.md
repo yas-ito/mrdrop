@@ -78,65 +78,72 @@
 
 ## Mac → Windows
 
-**最終更新: 2026-09-12（Mac）／🎉 App Store の審査を通過（承認済み・リリース待ち）。
-PC 側の BOOTH 出品材料がそろいました。🔴 頼みたいことが1つあります**
+**最終更新: 2026-09-12（Mac）／🔴 ここから先は Windows でやります（本人指示）。
+出品に要る物は Google ドライブに全部置きました。App Store は承認済み・リリース待ちです**
 
-# 🎉 **1.0.0 (1) が承認されました**（2026-09-10 再提出 → 2026-09-11 承認）
+# 🔴 **渡したもの: Google ドライブ「伝達専用 / Mr.Drop出品一式 /」**
 
-2度目の却下（Guideline 5.2.5・サブタイトルの商標）は、メタデータを直して解決。
-**コードは一度も直していません。バイナリは 1.0.0 (1) のままです。**
+git に入らない物だけ、社法どおり伝達専用フォルダを通しました。**同じ説明の紙を中にも置いてあります。**
 
-- いまは**リリース待ち**（手動リリースにしてあるので、押すまで公開されません）
-- 🔲 **公開したら、App Store の URL と版数をこの欄に書きます。**
-  そちらの `取扱説明書.html` の「iPhone アプリはありますか」は**それまで今のまま**で構いません
-
-# 🆕 **PC 側（BOOTH）の出品材料がそろいました**
-
-本人の指示で、売る準備をこちらで進めました。**価格は ¥980（発売記念価格）・
-Windows 版と Mac 版で 1 商品**（本人決定 2026-09-12）。
-
-| もの | 置き場所 |
+| もの | なぜここか |
 |---|---|
-| 商品説明の正本 | `yas-tools/ops/mrdrop-booth-body.md`（`9127100` で push 済み） |
-| 出品の手順書 | `yas-tools/ops/mrdrop-booth-listing.md`（商品名・タグ・価格・チェック表） |
-| 商品画像の生成元 | `yas-tools/ops/mrdrop-booth-images/`（`66608d6` で push 済み。**そちらでも作り直せます**） |
-| できた商品画像5枚 | `~/Documents/販売品/Mr.Drop/商品画像/`（PNG は git に入れていません） |
-| Mac 版の配布 ZIP | `~/Documents/販売品/Mr.Drop/MrDrop_v1.0.0_mac.zip`（80MB・公証済み） |
+| `MrDrop_v1.0.0_mac.zip`（80MB・署名と公証済み） | 🔴 **Windows では作れません**（macOS の署名が要る）。BOOTH にそのまま上げてください |
+| `商品画像/`（5枚・2400×2400） | PNG は git に入れていないため。**番号順に。1枚目がサムネイル** |
+| `BOOTH商品説明.txt`（4,697文字） | 商品説明にそのまま貼るテキスト |
 
-🔴 **"AirDrop" という言葉を、配る物と読み物から全部外しました**（BOOTH の本文・タグ・
-**取扱説明書の両方**・README・`package.json`）。App Store が Guideline 5.2.5 で商標を指摘したので、
-**同じ言葉を店の文面にも残さない**と決めています。
+**git にあるもの**（`yas-tools-ops` を pull すれば手に入ります）:
 
-⚠️ **`取扱説明書.html`（Windows 版）も1か所だけ直しました**（165行目・「Windows には AirDrop が無いので」→
-「Windows のパソコンには、iPhone から無線で受け取るしくみが標準では入っていません」）。
-**そちらの領分に手を入れてすみません。**次に ZIP を作るとき、直った文面が入ります。
-`NODE-SETUP` / `NODE-BADGE` の印は触っていません。**テストは 108 件とも通っています。**
+- 商品説明の**正本** … `ops/mrdrop-booth-body.md`（上の txt はここからの書き出し。**直したら書き出し直す**）
+- **出品手順書** … `ops/mrdrop-booth-listing.md`（商品名・カテゴリ・タグ・価格・出品前チェック表）
+- **商品画像の生成元** … `ops/mrdrop-booth-images/`（`gen.py` ＋ `make-shot.ps1`）
 
-🔵 根拠: Apple の [Guidelines for Using Apple Trademarks](https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html) は、
-**製品名に使うのは不可／「compatible with」等の参照は可、ただし帰属表示が必須**としています。
-帰属表示を入れてまで書く価値のある言葉ではない、という判断です。
-
-# 🔴 **お願い: Windows 版の配布 ZIP を作って、BOOTH に上げてください**
-
-**Mac では作れません。**同梱する `node.exe`（＋`LICENSE`）が そちらにしか無いためです。
+# 🖼 **商品画像は、そちらでも編集できます**（`make-shot.ps1` を足しました）
 
 ```powershell
-cd C:\yas-tools\products\mrdrop
-git pull
-node build/make-package.js --with-node build\node\node.exe
+cd C:\yas-tools\yas-tools-ops\ops\mrdrop-booth-images
+python gen.py
+powershell -NoProfile -ExecutionPolicy Bypass -File .\make-shot.ps1 `
+  -Html "$PWD\01_cover.html" -Out "$HOME\Documents\01_表紙.png"
 ```
 
-`_build\MrDrop_v1.0.0_win.zip`（約34MB）ができます。
-**Mac へ送る必要はありません。**BOOTH の商品ページができたら、
-**そちらのブラウザからそのまま上げるのが一番早い**です（AI の経路ではアップロードできません）。
+🔴 **先に [Noto Sans JP](https://fonts.google.com/noto/specimen/Noto+Sans+JP) を入れてください。**
+このデザインは Mac の **Hiragino Sans** で作っています。Windows に無いので、入れずに作り直すと
+**Yu Gothic UI で描かれ、直した1枚だけ字面が変わります**（崩れはしません）。
+CSS は `Hiragino Sans → Noto Sans JP → Yu Gothic UI → Meiryo` の順に逃がしてあります。
 
-🔲 出品そのものは本人の操作です。上げる順番と入力内容は
-[`mrdrop-booth-listing.md`](https://github.com/yas-ito/yas-tools-ops) の手順書どおりで進みます。
+🔵 色は `gen.py` の `THEMES` 1か所（`MRDROP_THEME=light` で白、`dark` で黒）。
+**個々の HTML に色をベタ書きしないでください。**1枚だけ浮きます。
+
+# 🔲 **やること（この順）**
+
+| | やること | 誰が |
+|---|---|---|
+| 1 | **Windows 版 ZIP を作る**　`node build/make-package.js --with-node build\node\node.exe` | そちら |
+| 2 | **BOOTH に出品**（手順書の0章のチェック → 上から入力 → 画像5枚 → ZIP 2本） | 本人 |
+| 3 | **App Store の「このバージョンをリリース」を押す**（押すまで公開されません） | 本人 |
+| 4 | 取扱説明書の「iPhone アプリはありますか」を差し替える（**アプリ推しの書き方で**・下記） | そちら |
+| 5 | 商品ID・URL・版数を**この欄に書く** | そちら |
+
+⚠️ **2 と 3 の順番は本人の判断です。**アプリが公開されていないと、商品説明の
+「App Store で無料」が宙に浮きます。**同じ日にそろえるのが安全**です。
+
+# 📌 決めたこと（**蒸し返さないでください**）
+
+- **価格 ¥980（発売記念価格）**・**Windows 版と Mac 版で1商品**（DLファイル2本）。本人決定 2026-09-12
+- 🔴 **"AirDrop" は使いません。**App Store が Guideline 5.2.5 で商標を指摘したため、
+  商品説明・タグ・**取扱説明書の両方**・README・`package.json` から全部外しました（`d972f7c`）。
+  Apple のガイドラインは参照的な使用を認めていますが**帰属表示が必須**で、それを背負う価値のある語ではない、という判断です
+- 🔴 **iPhone アプリを本命、ブラウザを逃げ道として書きます**（本人指示 2026-09-12）。
+  「アプリなしでも使える」は**消していません**が、並列に置くのをやめました。
+  **4 の説明書の書き直しも、この方針で**（いまは「Safari から使う分にはアプリと同じ」と書いてあります）
+- 商品説明の末尾に**商標の帰属表示**を入れてあります（Apple / Microsoft・関係が無い旨も明記）
+- 🔵 **売り方の見立て**（本人と話した結論）: 無料の同等品（LocalSend）があるので、
+  **単体で数は出ない前提**。出す目的は「店の商品が1つ増える」「App Store から人が来る導線」
+  「一撃極のおまけに使える」。**価格をいじっても認知は解決しない**ので、下げない
 
 # 🔲 まだ手を付けていないこと
 
-- **Intel Mac での確認**（ユニバーサルビルドですが実機がありません）。
-  商品説明では **Apple Silicon / Intel の別を謳っていません**
+- **Intel Mac での確認**（ユニバーサルビルドですが実機がありません）。商品説明では謳っていません
 - **PC → iPhone** はブラウザ画面からのみ（そちらの分担のまま）
 
 ---
