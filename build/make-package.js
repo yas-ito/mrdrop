@@ -255,3 +255,18 @@ fs.writeFileSync(OUT, Buffer.concat(chunks));
 console.log("");
 console.log(`できあがり: ${OUT}`);
 console.log(`  サイズ: ${(fs.statSync(OUT).size / 1048576).toFixed(1)} MB`);
+
+// 🔴 出品用の置き場があるなら、そこも必ず同じ物にする（2026-09-12 に事故った）。
+//    _build/出品/ は BOOTH へ上げるときに開くフォルダ。作り直したのに
+//    こちらを更新し忘れ、**今日直した分が1つも入っていない ZIP を公開してしまった**。
+//    「同じ物が2か所にある」は必ずずれる。人が覚えているのではなく、ここで揃える。
+const STAGE = path.join(__dirname, "..", "_build", "出品");
+if (fs.existsSync(STAGE)) {
+  const to = path.join(STAGE, path.basename(OUT));
+  fs.copyFileSync(OUT, to);
+  console.log("");
+  console.log(`出品用も揃えました: ${to}`);
+} else {
+  console.log("");
+  console.log("（_build/出品/ はまだありません。BOOTH へ上げるときはここに作ると自動で揃います）");
+}
