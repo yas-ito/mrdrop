@@ -12,7 +12,7 @@ rem
 rem  NOTE (for maintainers): ASCII only, CRLF.
 rem  cmd.exe reads .bat as CP932 on Japanese Windows, so non-ASCII
 rem  text in this file would break. Japanese wording belongs in
-rem  scriptssettings-windows.ps1 and the HTML manual, not here.
+rem  scripts\settings-windows.ps1 and the HTML manual, not here.
 rem
 rem  This file is deliberately NOT copied into %LOCALAPPDATA%MrDrop:
 rem  cmd.exe keeps a running .bat open and re-reads it line by line,
@@ -23,14 +23,14 @@ rem ---------------------------------------------------------------
 setlocal
 cd /d "%~dp0"
 
-if not exist "%~dp0scriptssettings-windows.ps1" goto no_scripts
+if not exist "%~dp0scripts\settings-windows.ps1" goto no_scripts
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scriptssettings-windows.ps1" -Uninstall
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\settings-windows.ps1" -Uninstall
 pause
 exit /b 0
 
 :no_scripts
-echo [ERROR] scriptssettings-windows.ps1 was not found.
+echo [ERROR] scripts\settings-windows.ps1 was not found.
 echo         Extract the whole ZIP, keeping the folders together.
 echo.
 pause
