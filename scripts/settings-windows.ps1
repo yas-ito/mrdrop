@@ -2,6 +2,7 @@
 #
 #   -ChooseInbox    保存先をフォルダ選択で変える（Mac のメニュー「保存先を変える…」と同じ）
 #   -OpenInbox      保存先をエクスプローラで開く（Mac の「保存先を開く」と同じ）
+#   -ChooseName     この PC の名前を変える（iPhone の一覧に出る名前）
 #   -MakeResident   窓なしで常駐させる（install-windows.ps1 を呼ぶ。管理者へ昇格する）
 #   -Uninstall      入れる前に戻す（同上。届いたファイルは消さない）
 #   -FromTray       常駐アイコン（MrDropTray.exe）から呼ばれた。入れ直しは呼んだ側がやる
@@ -17,6 +18,7 @@
 param(
   [switch]$ChooseInbox,
   [switch]$OpenInbox,
+  [switch]$ChooseName,
   [switch]$MakeResident,
   [switch]$Uninstall,
   [switch]$FromTray,
@@ -220,6 +222,93 @@ if ($OpenInbox) {
   $p = Get-InboxPath
   if (-not (Test-Path -LiteralPath $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
   Start-Process explorer.exe $p
+  exit 0
+}
+
+# ── この PC の名前を変える ────────────────────────────────
+# 🔴 これが要る理由（Mac が実機で踏んだ 2026-09-12）:
+#    iPhone の一覧に `yas`（Windows）と `yasnoMac-mini-local`（Mac）が並び、
+#    本人が `yas` を選んで送って「Mac に届かない＝消えた」と思った。
+#    動きは正常で、**分からないのは名前の方**だった。
+#    既定はホスト名そのままで良い（加工しても短くならない＝区別が付かない）。
+#    足りないのは「**自分で名前を付けられる口**」。
+if ($ChooseName) {
+  Head "この PC の名前を変える"
+  $cfg = Read-Config
+  $now = [string]$cfg.name
+  # 🔴 host と args は PowerShell の自動変数。自分の変数名に使わない
+  $pcName = $env:COMPUTERNAME
+  if ($now) { Say "いまの名前: $now" } else { Say "いまの名前: $pcName （パソコンの名前をそのまま使っています）" }
+  Write-Host ""
+  Say "iPhone の「送り先」の一覧に、この名前で出ます。"
+  Say "うちの居間のPC、編集用、などと付けておくと迷いません。"
+  Write-Host ""
+
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+  if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+    Fail "名前を入れる画面を出せません（STA ではありません）。"
+  }
+
+  $form = New-Object System.Windows.Forms.Form
+  $form.Text = "Mr.Drop — この PC の名前"
+  $form.ClientSize = New-Object System.Drawing.Size(420, 150)
+  $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+  $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
+  $form.MinimizeBox = $false
+  $form.MaximizeBox = $false
+
+  $label = New-Object System.Windows.Forms.Label
+  $label.Text = "iPhone の一覧に出る名前を入れてください。"
+  $label.SetBounds(14, 14, 392, 20)
+  $form.Controls.Add($label)
+
+  $box = New-Object System.Windows.Forms.TextBox
+  $box.SetBounds(14, 40, 392, 24)
+  $box.MaxLength = 40
+  $box.Text = $now
+  $form.Controls.Add($box)
+
+  $hint = New-Object System.Windows.Forms.Label
+  $hint.Text = "空にすると、パソコンの名前（$pcName）に戻ります。"
+  $hint.SetBounds(14, 70, 392, 20)
+  $hint.ForeColor = [System.Drawing.Color]::DimGray
+  $form.Controls.Add($hint)
+
+  $ok = New-Object System.Windows.Forms.Button
+  $ok.Text = "OK"; $ok.SetBounds(226, 104, 84, 28)
+  $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
+  $form.Controls.Add($ok); $form.AcceptButton = $ok
+
+  $cancel = New-Object System.Windows.Forms.Button
+  $cancel.Text = "キャンセル"; $cancel.SetBounds(320, 104, 84, 28)
+  $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+  $form.Controls.Add($cancel); $form.CancelButton = $cancel
+
+  $result = $form.ShowDialog()
+  $new = $box.Text
+  $form.Dispose()
+
+  if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
+    Write-Host ""
+    Say "やめました。名前は変えていません。"
+    Wait-IfAsked
+    exit 0
+  }
+
+  # 前後の空白は落とす。制御文字は入れさせない（mDNS の名前に乗るため）
+  $new = ([string]$new).Trim()
+  if ($new -match "[\x00-\x1f]") { Fail "その名前は使えません（見えない文字が入っています）。" }
+
+  $cfg.name = $new
+  Write-Config $cfg
+
+  Write-Host ""
+  if ($new) { Say "名前を変えました: $new" } else { Say "パソコンの名前（$pcName）に戻しました。" }
+  if (Restart-Tray) { Say "常駐を入れ直したので、もう効いています。" }
+  else { Warn "動いていなければ、次に Mr.Drop を開いたときから効きます。" }
+  Write-Host ""
+  Wait-IfAsked
   exit 0
 }
 

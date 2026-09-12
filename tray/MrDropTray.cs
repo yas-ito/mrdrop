@@ -84,6 +84,7 @@ namespace MrDrop
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("保存先を開く", null, (s, e) => RunSettings("-OpenInbox", false)));
             menu.Items.Add(new ToolStripMenuItem("保存先を変える...", null, (s, e) => ChangeInbox()));
+            menu.Items.Add(new ToolStripMenuItem("この PC の名前を変える...", null, (s, e) => ChangeName()));
             menu.Items.Add(new ToolStripMenuItem("取扱説明書", null, (s, e) => OpenManual()));
             menu.Items.Add(startupItem);
             menu.Items.Add(new ToolStripSeparator());
@@ -243,6 +244,15 @@ namespace MrDrop
             // 🔴 保存先は起動したときにしか読まない。変えたら**こちらで入れ直す**。
             //    前は .ps1 がタスクを入れ直していたが、いまは本体を抱えているのは私。
             RunSettings("-ChooseInbox -FromTray", true);
+            RestartServer();
+        }
+
+        // 🔴 iPhone の一覧に出る名前。既定はパソコンの名前そのまま。
+        //    Mac が実機で踏んだ（`yas` と `yasnoMac-mini-local` が並んで取り違えた）。
+        //    中身は .ps1 に任せる。設定の書き方を2か所に持たない。
+        void ChangeName()
+        {
+            RunSettings("-ChooseName -FromTray", true);
             RestartServer();
         }
 

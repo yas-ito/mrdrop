@@ -29,7 +29,7 @@ $csc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $csc) { throw "C# コンパイラ (csc.exe) が見つかりません。.NET Framework 4.x が要ります。" }
 Write-Host "コンパイラ: $csc"
 
-$args = @(
+$cscArgs = @(
   "/target:winexe"          # 🔴 黒い画面を出さない
   "/optimize+"
   "/nologo"
@@ -41,7 +41,7 @@ $args = @(
   "/reference:System.Windows.Forms.dll"
   $src
 )
-& $csc $args
+& $csc $cscArgs
 if ($LASTEXITCODE -ne 0) { throw "ビルドに失敗しました（csc の戻り値 $LASTEXITCODE）" }
 
 $info = Get-Item -LiteralPath $out

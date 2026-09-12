@@ -18,6 +18,8 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..", "..");
 const BS = String.fromCharCode(92);
+// PowerShell の変数記号。ここに直接書くと、このファイル自身が下の検査に引っかかる。
+const SIGIL = String.fromCharCode(36);
 
 // 配る .bat（build/make-package.js の BATS と同じ顔ぶれ）
 const BATS = ["はじめる.bat", "アンインストール.bat", "保存先を変える.bat", "保存先を開く.bat", "scripts/run-once.bat"];
@@ -133,6 +135,46 @@ module.exports = async function (t) {
          "🔴 昔の S4U タスクを片付ける（残すと二重起動で両方死ぬ）");
       ok(!installerSrc.includes("Register-ScheduledTask -TaskName"), "🔴 もうタスクは作らない");
       ok(installerSrc.includes("MrDropTray.exe"), "常駐アイコンを写して動かす");
+    }
+  });
+
+  // 🔴 iPhone の一覧で取り違える事故（Mac が実機で踏んだ 2026-09-12）。
+  //    `yas`（Windows）と `yasnoMac-mini-local`（Mac）が並び、yas を選んで送って
+  //    「Mac に届かない＝消えた」と思った。動きは正常で、分からないのは名前の方だった。
+  //    既定の加工では区別が付かない（ホスト名が短いのは偶然）。自分で付けられる口を作る。
+  suite("配る物 — この PC の名前を変えられる", () => {
+    const ps1 = path.join(ROOT, "scripts", "settings-windows.ps1");
+    if (fs.existsSync(ps1)) {
+      const src = fs.readFileSync(ps1, "utf8");
+      ok(src.includes("-ChooseName") || src.includes(SIGIL + "ChooseName"), "🔴 -ChooseName がある");
+      ok(src.includes(SIGIL + "cfg.name"), "config.json の name に書く");
+    }
+    const cs = path.join(ROOT, "tray", "MrDropTray.cs");
+    if (fs.existsSync(cs)) {
+      const src = fs.readFileSync(cs, "utf8");
+      ok(src.includes("この PC の名前を変える"), "🔴 タスクバーのメニューに項目がある");
+      ok(src.includes("-ChooseName"), "中身は .ps1 に任せる（設定の書き方を2か所に持たない）");
+    }
+  });
+
+  // 🔴 PowerShell の自動変数を自分の変数名に使わない（`host` はホストオブジェクト、
+  //    `args` は引数配列）。上書きは効かず、黙って別の物を読む。実際に書いてしまった。
+  suite("配る物 — PowerShell の自動変数を奪っていない", () => {
+    const files = ["scripts/install-windows.ps1", "scripts/settings-windows.ps1",
+                   "build/build-tray.ps1", "build/make-tray-icon.ps1"];
+    const reserved = ["host", "args", "input", "error", "true", "false", "null", "pwd", "pid", "home"];
+    for (const f of files) {
+      const abs = path.join(ROOT, f);
+      if (!fs.existsSync(abs)) continue;
+      const lines = fs.readFileSync(abs, "utf8").split("\n");
+      for (const name of reserved) {
+        const bad = lines.some((line) => {
+          const t = line.trim();
+          if (t.startsWith("#")) return false;                      // 注釈は見ない
+          return new RegExp(BS + SIGIL + name + BS + "s*=[^=]").test(t);
+        });
+        ok(!bad, `${f} で ${SIGIL}${name} を自分の変数に使っていない`);
+      }
     }
   });
 
