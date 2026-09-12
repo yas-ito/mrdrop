@@ -2,9 +2,14 @@
 rem ---------------------------------------------------------------
 rem  Mr.Drop - set this PC up to receive, once and for all.
 rem
-rem  Double-click this file. It opens the firewall (private network
-rem  only) and makes Mr.Drop start by itself every time you log on.
-rem  No black window stays open. You only do this once.
+rem  Double-click this file. It copies Mr.Drop into this PC
+rem  (%LOCALAPPDATA%MrDropapp), opens the firewall (private
+rem  network only) and makes it start by itself every time you log
+rem  on. No black window stays open. You only do this once.
+rem
+rem  After that this extracted folder can be thrown away - it does
+rem  not matter where you extracted it. From then on the way in is
+rem  Start Menu > Mr.Drop.
 rem
 rem  Windows will ask for permission - that is for the firewall.
 rem

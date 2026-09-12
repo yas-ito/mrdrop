@@ -5,7 +5,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { load, expand, DEFAULTS } = require("../lib/config");
+const { load, expand, defaultFile, DEFAULTS } = require("../lib/config");
 
 module.exports = async function (t) {
   const { suite, eq, ok } = t;
@@ -82,5 +82,60 @@ module.exports = async function (t) {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  // 🔴 設定ファイルはプログラムの隣に置かない（本人が実際につまずいた 2026-09-12）。
+  //    Windows は展開したフォルダを %LOCALAPPDATA%\MrDrop\app へ写して、
+  //    元のフォルダは捨ててよい作りにした。設定が隣にあると、捨てた瞬間に消える。
+  suite("設定ファイル — 置き場所", () => {
+    const got = defaultFile("/どこか/app");
+    if (process.platform === "win32") {
+      const want = path.join(process.env.LOCALAPPDATA, "MrDrop", "config.json");
+      eq(got, want, "🔴 Windows は %LOCALAPPDATA%\\MrDrop\\config.json（記録と同じ場所）");
+      ok(!got.startsWith(path.resolve("/どこか/app") + path.sep),
+         "🔴 プログラムの隣には置かない（展開フォルダを捨てても設定は残る）");
+    } else {
+      eq(got, path.join("/どこか/app", "config.json"),
+         "Mac は今までどおり隣（アプリは --config で Application Support を渡してくる）");
+    }
+  });
+
+  // 🔴 settings-windows.ps1 が別の config.json を読み書きしていたら、
+  //    「保存先を変える」を押しても常駐側には何も効かない（黙って外れるのが一番こまる）。
+  suite("設定ファイル — PowerShell 側と同じ場所を見ている", () => {
+    const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
+    if (!fs.existsSync(ps1)) { ok(true, "settings-windows.ps1 が無い（配布物の中では省かれる）"); return; }
+    const src = fs.readFileSync(ps1, "utf8");
+    ok(/\$AppDir\s*=\s*Join-Path \$env:LOCALAPPDATA "MrDrop"/.test(src),
+       "置き場所は %LOCALAPPDATA%\\MrDrop");
+    ok(/\$CfgFile\s*=\s*Join-Path \$AppDir "config.json"/.test(src),
+       "🔴 config.json はその中（server/lib/config.js の defaultFile と同じ）");
+  });
+
+  // 🔴 入れたあとのフォルダに .bat を置かない。cmd.exe は実行中の .bat を掴んだまま
+  //    行単位で読み直すので、「やめる」で自分のいるフォルダを消すと途中で壊れる。
+  //    入れたあとの入口はスタートメニューのショートカット（powershell を直接呼ぶ）。
+  suite("入れ方 — 写すものに .bat を混ぜない", () => {
+    const ps1 = path.join(__dirname, "..", "..", "scripts", "install-windows.ps1");
+    if (!fs.existsSync(ps1)) { ok(true, "install-windows.ps1 が無い"); return; }
+    const src = fs.readFileSync(ps1, "utf8");
+    const dirs = (src.match(/\$CopyDirs\s*=\s*@\(([^)]*)\)/) || [])[1];
+    const files = (src.match(/\$CopyFiles\s*=\s*@\(([^)]*)\)/) || [])[1];
+    ok(dirs != null && files != null, "写すものの一覧が読めた");
+    ok(!/\.bat/i.test(String(files)), "🔴 写すファイルの一覧に .bat が無い");
+    // 🔴 一覧だけ見ても足りない。scripts\ をまるごと写すので、その中の run-once.bat が
+    //    すり抜けていた（2026-09-12 実測）。robocopy 側の除外まで見ること。
+    ok(/robocopy[^\n]*\/XF[^\n]*\*\.bat/.test(src),
+       "🔴 フォルダを写すときも .bat を除いている（run-once.bat がすり抜けない）");
+    // 🔴 除外だけでは足りない。robocopy の /XF は /MIR でも消さないので、
+    //    古い版が置いていった .bat が残り続ける（2026-09-12 実測）。
+    ok(/Get-ChildItem -LiteralPath \$AppRoot -Recurse -Filter \*\.bat[\s\S]{0,200}Remove-Item/.test(src),
+       "🔴 写したあとに .bat を掃いている（古い版の置き土産まで消す）");
+    ok(/"server"/.test(String(dirs)) && /"scripts"/.test(String(dirs)) && /"node"/.test(String(dirs)),
+       "server・scripts・node は写す");
+    ok(/取扱説明書\.html/.test(String(files)), "取扱説明書は写す（スタートメニューから開くため）");
+    ok(/Start Menu.Programs.Mr\.Drop/.test(src), "スタートメニューに入口を作っている");
+    ok(/Remove-Item -LiteralPath \$AppDir -Recurse -Force/.test(src),
+       "🔴 やめるときは入れたものを消す（アンインストールがある）");
   });
 };

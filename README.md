@@ -68,12 +68,32 @@ Mac では保存先が **`~/Downloads`**（ダウンロードフォルダその�
 .\scripts\install-windows.ps1
 ```
 
-ファイアウォールを開けて、ログオン時に勝手に動くようにします（窓は出ません）。
+次の3つをやります。
+
+1. 🔴 **中身を `%LOCALAPPDATA%\MrDrop\app` へ写す**
+2. ファイアウォールを開ける（プライベートのみ）
+3. ログオン時に勝手に動くようにする（窓は出ません／S4U）
+
+さらに **スタートメニュー > Mr.Drop** に入口（保存先を変える／保存先を開く／取扱説明書／
+Mr.Drop をやめる）を作ります。
+
+> 🔴 **写すのは、展開したフォルダを捨てられるようにするためです。**
+> 本人がダウンロードフォルダで展開して押し、そのあと片付けようとして
+> 「消せない」で詰まりました（2026-09-12）。展開した場所のまま動かすと、
+> **片付けようとすると消せない／片付けたら黙って壊れる**のどちらかになります。
+> いまはどこで展開しても構わず、押したあとフォルダは捨てられます。
+
+> 🔴 **写す先に `.bat` は置きません。**cmd.exe は実行中の `.bat` を掴んだまま
+> 行単位で読み直すので、「やめる」で自分のいるフォルダを消すと途中で壊れます。
+> 入れたあとの入口はショートカット（`powershell` を直接呼ぶ）だけです。
 
 ```powershell
 .\scripts\install-windows.ps1 -Status      # いまどうなっているか
-.\scripts\install-windows.ps1 -Uninstall   # 元に戻す
+.\scripts\install-windows.ps1 -Uninstall   # 入れる前に戻す（届いたファイルは消さない）
 ```
+
+`-Uninstall` は、自動起動・壁の穴・スタートメニュー・`%LOCALAPPDATA%\MrDrop`（プログラム・
+設定・記録）を全部外します。**保存先と送信箱の中身には触りません。**
 
 Mac は `launchd` に登録します（ログイン時に立ち上がります）。**これは開発者向け**で、
 配布する `Mr.Drop.app` はメニューの「ログイン時に起動」で同じことができます。
@@ -89,11 +109,23 @@ bash scripts/install-mac.sh --uninstall  # 外す
 
 初回に `config.json` ができます。書き換えれば変わります。
 
+| OS | 場所 |
+|---|---|
+| **Windows** | `%LOCALAPPDATA%\MrDrop\config.json`（記録と同じ所） |
+| **Mac（アプリ）** | `~/Library/Application Support/Mr.Drop/config.json` |
+| **Mac（ソースから直接）** | リポジトリ直下の `config.json` |
+
+> 🔴 **Windows でプログラムの隣に置かないのは、隣が消えるからです。**
+> 展開したフォルダは「はじめる.bat」のあと捨ててよい作りなので、
+> 設定を隣に置くと一緒に消えます。`--config` で場所を指定することもできます。
+> **`server/lib/config.js` の `defaultFile()` と `scripts/settings-windows.ps1` の
+> `$CfgFile` は必ず同じ場所を指すこと**（`server/test/config.test.js` が突き合わせます）。
+
 ```json
 {
   "port": 48630,
-  "inbox": "%USERPROFILE%\\Desktop\\保存先",
-  "outbox": "%USERPROFILE%\\Desktop\\送信箱",
+  "inbox": "%USERPROFILE%\\Downloads",
+  "outbox": "%USERPROFILE%\\Desktop\\Mr.Drop送信箱",
   "name": "",
   "token": ""
 }
@@ -124,9 +156,10 @@ git も node も知らない人に渡せる ZIP を作れます。
 node build/make-package.js
 ```
 
-`_build/MrDrop_v<版>_win.zip` ができます。中身は **7 ファイルだけ**（`はじめる.bat`・
-`取扱説明書.html`・`server/`・`scripts/install-windows.ps1`）。
-受け取った人は**展開して `はじめる.bat` を押すだけ**です。
+`_build/MrDrop_v<版>_win.zip` ができます。入口の `.bat` は4本
+（`はじめる.bat`・`やめる.bat`・`保存先を変える.bat`・`保存先を開く.bat`）と
+`scripts/run-once.bat`。あとは `取扱説明書.html`・`server/`・`scripts/`。
+受け取った人は**どこかに展開して `はじめる.bat` を押すだけ**で、そのあとフォルダは捨てられます。
 
 - **受け取る人の PC には Node.js が要ります。**入っていなければ `はじめる.bat` がその旨を出します。
   取扱説明書の先頭に入れ方（`winget install OpenJS.NodeJS.LTS`）を書いてあります
@@ -179,7 +212,8 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 | `.local` で開けない | 代わりに IP（`http://192.168.…`）で開く |
 | アプリが PC を見つけない | `node server/mrdrop.js --browse` で PC 自身が見つけられるか確かめる。<br>見つかるならアプリ側（`Info.plist` の `NSBonjourServices`）を疑う |
 | 大きい動画が途中で止まる | 半端なファイルは保存先に出さない作りです。もう一度送ってください |
-| 自動起動しているか分からない | `.\scripts\install-windows.ps1 -Status` |
+| 自動起動しているか分からない | `%LOCALAPPDATA%\MrDrop\app\scripts\install-windows.ps1 -Status` |
+| やめたい | スタートメニュー > Mr.Drop > Mr.Drop をやめる（または `やめる.bat`） |
 | Mac で「開発元を確認できない」と出る | 公証していない版。`make-mac-app.sh` を `--no-notarize` なしで作り直す |
 | Mac で「ローカルネットワーク」の許可を聞かれた | 「許可」を押す。断ると iPhone から見つからなくなる（設定 › プライバシーとセキュリティ › ローカルネットワーク で直せる） |
 

@@ -3,27 +3,46 @@
 #   -ChooseInbox    保存先をフォルダ選択で変える（Mac のメニュー「保存先を変える…」と同じ）
 #   -OpenInbox      保存先をエクスプローラで開く（Mac の「保存先を開く」と同じ）
 #   -MakeResident   窓なしで常駐させる（install-windows.ps1 を呼ぶ。管理者へ昇格する）
+#   -Uninstall      入れる前に戻す（同上。届いたファイルは消さない）
+#   -Pause          終わりに Enter を待つ。スタートメニューのショートカットから呼ぶとき用
+#                   （.bat には pause があるが、ショートカットは powershell を直接呼ぶので
+#                    これが無いと画面が一瞬で閉じて何も読めない）
 #
-# 🔴 隣の .bat から呼ばれる前提。**日本語はここに置く**（.bat は cmd が CP932 で読むので
-#    非ASCII を書けない。だから案内文は全部こちら側）。
+# 🔴 隣の .bat とスタートメニューのショートカットから呼ばれる前提。**日本語はここに置く**
+#    （.bat は cmd が CP932 で読むので非ASCII を書けない。だから案内文は全部こちら側）。
 # 🔴 このファイルは **BOM 付き UTF-8**（社法。PowerShell 5.1 が BOM 無しを CP932 として読む）。
 
 [CmdletBinding()]
 param(
   [switch]$ChooseInbox,
   [switch]$OpenInbox,
-  [switch]$MakeResident
+  [switch]$MakeResident,
+  [switch]$Uninstall,
+  [switch]$Pause
 )
 
 $ErrorActionPreference = "Stop"
 $Repo     = Split-Path -Parent $PSScriptRoot
-$CfgFile  = Join-Path $Repo "config.json"
 $TaskName = "MrDrop"
+
+# 🔴 設定はプログラムの隣に置かない。%LOCALAPPDATA%\MrDrop\config.json 一本。
+#    server/lib/config.js の defaultFile() と**必ず同じ場所**にすること。
+#    ・展開したフォルダは「はじめる.bat」のあと捨ててよい作りなので、隣に置くと消える
+#    ・展開したフォルダに残った .bat を押しても、入っている方の設定を触れる
+$AppDir   = Join-Path $env:LOCALAPPDATA "MrDrop"
+$CfgFile  = Join-Path $AppDir "config.json"
 
 function Say  ($m) { Write-Host "   $m" }
 function Head ($m) { Write-Host ""; Write-Host "== $m" -ForegroundColor Cyan }
 function Warn ($m) { Write-Host "   ! $m" -ForegroundColor Yellow }
-function Fail ($m) { Write-Host ""; Write-Host "🔴 $m" -ForegroundColor Red; Write-Host ""; exit 1 }
+function Wait-IfAsked {
+  if ($Pause) { Write-Host ""; Read-Host "  Enter を押すと閉じます" | Out-Null }
+}
+function Fail ($m) {
+  Write-Host ""; Write-Host "🔴 $m" -ForegroundColor Red; Write-Host ""
+  Wait-IfAsked
+  exit 1
+}
 
 # ── 設定の読み書き ────────────────────────────────────────
 # 🔴 config.json が無いこともある（一度も起動していないとき）。既定を組み立てて作る。
@@ -47,6 +66,7 @@ function Read-Config {
 function Write-Config ($cfg) {
   # 🔴 Set-Content の既定は CP932。config.js は UTF-8 として読むので、必ず UTF-8 で書く。
   #    BOM は付けない（JSON.parse が BOM を嫌う）。
+  New-Item -ItemType Directory -Path (Split-Path -Parent $CfgFile) -Force | Out-Null
   $json = ($cfg | ConvertTo-Json -Depth 5)
   [System.IO.File]::WriteAllText($CfgFile, $json + "`r`n", (New-Object System.Text.UTF8Encoding($false)))
 }
@@ -60,6 +80,37 @@ function Expand-Path ($p) {
 
 function Get-InboxPath {
   return Expand-Path (Read-Config).inbox
+}
+
+# 管理者に昇格して install-windows.ps1 を呼ぶ。-MakeResident と -Uninstall の共通部分。
+# 🔴 昇格した側の画面はすぐ閉じるので、結果をファイルに残して読み返す。
+#    「何も起きなかった」と見えるのが一番こまる。
+function Invoke-Installer ([bool]$DoUninstall, [string]$denyMessage) {
+  $installer = Join-Path $PSScriptRoot "install-windows.ps1"
+  if (-not (Test-Path -LiteralPath $installer)) { Fail "scripts\install-windows.ps1 が見つかりません。" }
+
+  $isAdmin = ([Security.Principal.WindowsPrincipal] `
+    [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+      [Security.Principal.WindowsBuiltInRole]::Administrator)
+
+  if ($isAdmin) {
+    if ($DoUninstall) { & $installer -Uninstall } else { & $installer }
+    return
+  }
+
+  $log = Join-Path $env:TEMP "mrdrop-setup.log"
+  if (Test-Path -LiteralPath $log) { Remove-Item -LiteralPath $log -Force }
+  $inner = if ($DoUninstall) { "& '$installer' -Uninstall *>&1 | Tee-Object -FilePath '$log'" }
+           else                { "& '$installer' *>&1 | Tee-Object -FilePath '$log'" }
+  $b64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($inner))
+  try {
+    Start-Process powershell -Verb RunAs -Wait -ArgumentList `
+      "-NoProfile","-ExecutionPolicy","Bypass","-EncodedCommand",$b64
+  } catch {
+    Fail $denyMessage
+  }
+  if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log }
+  else { Fail "うまくいきませんでした。もう一度やり直してください。" }
 }
 
 # 常駐しているなら、設定を読み直させるために入れ直す。
@@ -125,6 +176,7 @@ if ($ChooseInbox) {
   if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
     Write-Host ""
     Say "やめました。保存先は変えていません。"
+    Wait-IfAsked
     exit 0
   }
 
@@ -147,8 +199,9 @@ if ($ChooseInbox) {
   Write-Host ""
   Say "保存先を変えました: $new"
   if (Restart-IfResident) { Say "常駐を入れ直したので、もう効いています。" }
-  else { Warn "「はじめる.bat」で動かしているときは、一度閉じてから押し直してください。" }
+  else { Warn "scripts\run-once.bat で動かしているときは、一度閉じてから開き直してください。" }
   Write-Host ""
+  Wait-IfAsked
   exit 0
 }
 
@@ -163,38 +216,17 @@ if ($OpenInbox) {
 # ── 常駐にする ────────────────────────────────────────────
 if ($MakeResident) {
   Head "Mr.Drop を使えるようにします"
-  Say "これから、次の2つをやります。1回だけです。"
-  Say "  1. ファイアウォールを開ける（同じ Wi-Fi の中だけ）"
-  Say "  2. パソコンを起動したら、勝手に動くようにする（黒い画面は出ません）"
+  Say "これから、次の3つをやります。1回だけです。"
+  Say "  1. この PC の中（$(Join-Path $AppDir 'app')）へ写す"
+  Say "  2. ファイアウォールを開ける（同じ Wi-Fi の中だけ）"
+  Say "  3. パソコンを起動したら、勝手に動くようにする（黒い画面は出ません）"
   Write-Host ""
   Say "🔴 Windows が「許可しますか」と聞いてきます。「はい」を押してください。"
   Write-Host ""
 
-  $installer = Join-Path $PSScriptRoot "install-windows.ps1"
-  if (-not (Test-Path -LiteralPath $installer)) { Fail "scripts\install-windows.ps1 が見つかりません。" }
-
-  $isAdmin = ([Security.Principal.WindowsPrincipal] `
-    [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-      [Security.Principal.WindowsBuiltInRole]::Administrator)
-
-  if ($isAdmin) {
-    & $installer
-  } else {
-    # 🔴 昇格した側の画面はすぐ閉じるので、結果をファイルに残して読み返す。
-    #    「何も起きなかった」と見えるのが一番こまる。
-    $log = Join-Path $env:TEMP "mrdrop-setup.log"
-    if (Test-Path -LiteralPath $log) { Remove-Item -LiteralPath $log -Force }
-    $inner = "& '$installer' *>&1 | Tee-Object -FilePath '$log'"
-    $b64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($inner))
-    try {
-      Start-Process powershell -Verb RunAs -Wait -ArgumentList `
-        "-NoProfile","-ExecutionPolicy","Bypass","-EncodedCommand",$b64
-    } catch {
-      Fail "「はい」が押されなかったので、設定できませんでした。`n   もう一度「はじめる.bat」を押して、「はい」を選んでください。`n   どうしても入れたくないときは scriptsun-once.bat で、1回だけ動かせます。"
-    }
-    if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log }
-    else { Fail "設定できませんでした。もう一度やり直してください。" }
-  }
+  Invoke-Installer $false ("「はい」が押されなかったので、設定できませんでした。`n" +
+    "   もう一度「はじめる.bat」を押して、「はい」を選んでください。`n" +
+    "   どうしても入れたくないときは scripts\run-once.bat で、1回だけ動かせます。")
 
   # 🔴 install-windows.ps1 は CIM 越しなので、失敗しても止まらないことがある。
   #    作れたかどうかは、必ず自分の目で確かめる（install 側と同じ理由）。
@@ -205,12 +237,44 @@ if ($MakeResident) {
     Say "パソコンを起動したら、Mr.Drop が勝手に動きます（黒い画面は出ません）。"
     Say "iPhone の Mr.Drop アプリから、そのまま送ってください。"
     Write-Host ""
-    Say "保存先を変えたいときは「保存先を変える.bat」"
-    Say "やめたいときは scripts\install-windows.ps1 -Uninstall"
+    Say "🔵 展開したこのフォルダは、もう消して構いません。"
+    Write-Host ""
+    Say "この先の入口は「スタートメニュー > Mr.Drop」です。"
+    Say "  保存先を変える / 保存先を開く / 取扱説明書 / Mr.Drop をやめる"
   } else {
     Fail "常駐にできませんでした。上の出力を見てください。"
   }
   Write-Host ""
+  Wait-IfAsked
+  exit 0
+}
+
+# ── 入れる前に戻す ────────────────────────────────────────
+if ($Uninstall) {
+  Head "Mr.Drop をやめます"
+  Say "この PC から、Mr.Drop が入れたものを全部外します。"
+  Say "  ・自動起動（パソコンを起動しても、もう動きません）"
+  Say "  ・ファイアウォールに開けた穴"
+  Say "  ・スタートメニューの Mr.Drop"
+  Say "  ・入れたプログラムと設定と記録（$AppDir）"
+  Write-Host ""
+  Say "🔵 届いたファイルは消しません。保存先も送信箱も、そのまま残ります。"
+  Write-Host ""
+  Say "🔴 Windows が「許可しますか」と聞いてきます。「はい」を押してください。"
+  Write-Host ""
+
+  Invoke-Installer $true ("「はい」が押されなかったので、やめられませんでした。`n" +
+    "   もう一度やり直して、「はい」を選んでください。")
+
+  Write-Host ""
+  if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+    Fail "自動起動がまだ残っています。上の出力を見てください。"
+  }
+  Head "やめました"
+  Say "Mr.Drop はもう動きません。届いたファイルはそのままです。"
+  Say "また使いたくなったら、ZIP を展開して「はじめる.bat」を押してください。"
+  Write-Host ""
+  Wait-IfAsked
   exit 0
 }
 

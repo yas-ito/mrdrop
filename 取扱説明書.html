@@ -153,8 +153,8 @@
     <div class="quickstart">
       <div class="quickstart-title">まず、これだけ</div>
       <ol>
-        <li>ZIP を右クリック →「<strong>すべて展開</strong>」（中身だけ取り出すと動きません）</li>
-        <li><strong>はじめる.bat</strong> をダブルクリック（1回だけ。窓は残りません）</li>
+        <li>ZIP を右クリック →「<strong>すべて展開</strong>」（中身だけ取り出すと動きません）。<strong>場所はどこでも構いません</strong></li>
+        <li><strong>はじめる.bat</strong> をダブルクリック（1回だけ。窓は残りません）。<strong>済んだら、展開したフォルダは消して構いません</strong></li>
         <li>iPhone に <strong>Mr.Drop アプリ</strong>を入れる（App Store で<strong>無料</strong>）</li>
         <li>写真アプリの<strong>共有ボタン</strong>から「Mr.Drop」を選ぶ。それだけで PC へ届きます</li>
       </ol>
@@ -197,11 +197,21 @@
           <div class="win-file"><span class="win-file-icon">⚙️</span> はじめる.bat</div>
           <p style="margin-top:8px">Windows が「このアプリがデバイスに変更を加えることを許可しますか」と聞いてきます。
              <strong>「はい」を押してください。</strong>ファイアウォールを開けるために必要です。</p>
+          <p>押すと、次の3つが1回で済みます。</p>
+          <ol>
+            <li>Mr.Drop を<strong>パソコンの中へ写す</strong>（<code>%LOCALAPPDATA%\MrDrop\app</code>）</li>
+            <li>ファイアウォールを開ける（同じ Wi-Fi の中だけ）</li>
+            <li>パソコンを起動したら勝手に動くようにする</li>
+          </ol>
           <div class="good">
             <div class="good-title">✓ これで終わりです</div>
             <p><strong>次からは何もしなくて大丈夫です。</strong>パソコンを起動したら Mr.Drop が勝手に動きます。
                <strong>黒い画面は出たままになりません。</strong></p>
+            <p style="margin-top:8px"><strong>展開したフォルダは、もう消して構いません。</strong>
+               中身はパソコンの中に写してあります。ダウンロードフォルダを片付けても、Mr.Drop は動き続けます。</p>
           </div>
+          <div class="hint"><strong>この先の入口は「スタートメニュー &gt; Mr.Drop」です。</strong>
+            保存先を変える / 保存先を開く / 取扱説明書 / Mr.Drop をやめる が入っています。</div>
           <p style="margin-top:14px">動き出すと、こう表示されます（この画面は閉じて構いません）。</p>
           <pre>  Mr.Drop 1.0.0   MY-PC
 ────────────────────────────────────────────────────
@@ -288,9 +298,10 @@
     <h3>合言葉をつける</h3>
     <p>どうしても人の多いネットワークで使うなら、合言葉を設定してください。</p>
     <ol>
-      <li>一度「はじめる.bat」を動かすと、隣に <code>config.json</code> ができます</li>
+      <li>一度動かすと <code>%LOCALAPPDATA%\MrDrop\config.json</code> ができます
+        （エクスプローラの住所欄にそのまま貼れます）</li>
       <li>メモ帳で開いて <code>"token": ""</code> を <code>"token": "すきな合言葉"</code> に書き換えます</li>
-      <li>「保存先を変える.bat」を押して「キャンセル」すると、設定が読み直されます<br>
+      <li>「スタートメニュー &gt; Mr.Drop &gt; 保存先を変える」を開いて「キャンセル」すると、設定が読み直されます<br>
         <span class="hint" style="display:block">または、パソコンを再起動しても読み直されます</span></li>
       <li>iPhone からは <code>http://…:48630/?t=すきな合言葉</code> で開きます</li>
     </ol>
@@ -301,8 +312,8 @@
       <div class="step-row">
         <div class="step-num">1</div>
         <div class="step-body">
-          <div class="step-label">保存先を変える.bat をダブルクリック</div>
-          <div class="win-file"><span class="win-file-icon">⚙️</span> 保存先を変える.bat</div>
+          <div class="step-label">スタートメニュー &gt; Mr.Drop &gt; 保存先を変える</div>
+          <div class="win-file"><span class="win-file-icon">⚙️</span> 保存先を変える</div>
           <p style="margin-top:8px">フォルダを選ぶ画面が出ます。選んで「OK」を押すだけです。
              常駐させている場合は、そのまま新しい保存先で動き出します。</p>
         </div>
@@ -313,11 +324,14 @@
       <p>保存先を<strong>動画編集の素材フォルダ</strong>にしておくと、iPhone で撮った素材が、
          そのまま編集用のフォルダに落ちてきます。<strong>取り込みの手間がまるごと無くなります。</strong></p>
     </div>
-    <p><strong>保存先を開く.bat</strong> を押すと、いまの保存先をそのまま開けます。</p>
+    <p><strong>スタートメニュー &gt; Mr.Drop &gt; 保存先を開く</strong> で、いまの保存先をそのまま開けます。</p>
+    <div class="hint">展開したフォルダをまだ持っているなら、その中の
+      <code>保存先を変える.bat</code> / <code>保存先を開く.bat</code> でも同じことができます。
+      <strong>どちらを押しても、見ている設定は同じ1つです。</strong></div>
 
     <h2>こまかい設定（触らなくても使えます）</h2>
-    <p>「はじめる.bat」の隣にできる <code>config.json</code> を書き換えると、番号や名前も変えられます。
-       <strong>保存先を変えるだけなら、上の「保存先を変える.bat」で足ります。</strong></p>
+    <p><code>%LOCALAPPDATA%\MrDrop\config.json</code> を書き換えると、番号や名前も変えられます。
+       <strong>保存先を変えるだけなら、上の「保存先を変える」で足ります。</strong></p>
     <table>
       <tr><th>項目</th><th>意味</th></tr>
       <tr><td><code>port</code></td><td>使う番号。初期値は 48630。他のソフトとぶつかったときだけ変えてください</td></tr>
@@ -328,12 +342,26 @@
     </table>
     <h2>やめたいとき・1回だけ動かしたいとき</h2>
     <p>Mr.Drop はパソコンを起動すると勝手に動きます。<strong>ふだんは何もしなくて構いません。</strong></p>
+    <h3>やめる（アンインストール）</h3>
+    <p><strong>スタートメニュー &gt; Mr.Drop &gt; Mr.Drop をやめる</strong> を押してください。
+       展開したフォルダがまだ手元にあるなら、その中の <strong>やめる.bat</strong> でも同じです。</p>
+    <p>Windows が「許可しますか」と聞いてきたら「はい」を押してください。これで次の全部が外れます。</p>
+    <ul>
+      <li>自動起動（パソコンを起動しても、もう動きません）</li>
+      <li>ファイアウォールに開けた穴</li>
+      <li>スタートメニューの Mr.Drop</li>
+      <li>入れたプログラムと設定と記録（<code>%LOCALAPPDATA%\MrDrop</code>）</li>
+    </ul>
+    <div class="good">
+      <div class="good-title">✓ 届いたファイルは消えません</div>
+      <p>保存先と送信箱の中身には<strong>いっさい触りません。</strong>Mr.Drop で受け取った写真や動画は、
+         そのまま残ります。また使いたくなったら、ZIP を展開して「はじめる.bat」を押すだけです。</p>
+    </div>
+    <h3>そのほか</h3>
     <table>
-      <tr><th>やめたいとき</th><td><code>scripts</code> フォルダの <code>install-windows.ps1 -Uninstall</code>
-        （保存先と送信箱の中身はそのままです）</td></tr>
-      <tr><th>今どうなっているか</th><td>同じフォルダの <code>install-windows.ps1 -Status</code></td></tr>
-      <tr><th>入れずに1回だけ動かす</th><td><code>scripts\run-once.bat</code>。黒い画面が開いている間だけ動き、
-        閉じると止まります。<strong>何も残りません</strong></td></tr>
+      <tr><th>今どうなっているか</th><td><code>%LOCALAPPDATA%\MrDrop\app\scripts\install-windows.ps1 -Status</code></td></tr>
+      <tr><th>入れずに1回だけ動かす</th><td>展開したフォルダの <code>scripts\run-once.bat</code>。
+        黒い画面が開いている間だけ動き、閉じると止まります。<strong>自動起動にはなりません</strong></td></tr>
     </table>
 
   </div>
@@ -371,7 +399,7 @@
     <div class="qa-item">
       <div class="qa-q">動いているか分かりません</div>
       <div class="qa-a">iPhone の Mr.Drop アプリを開いて、このパソコンが一覧に出れば動いています。
-        出ないときは <code>scripts\install-windows.ps1 -Status</code> で状態が分かります。
+        出ないときは <code>%LOCALAPPDATA%\MrDrop\app\scripts\install-windows.ps1 -Status</code> で状態が分かります。
         送っている途中でパソコンを切った場合、そのファイルは届いていません
         （中途半端なファイルは残らないようにしてあります）。</div>
     </div>

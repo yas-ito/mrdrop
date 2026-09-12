@@ -69,4 +69,19 @@ function load(file) {
   return cfg;
 }
 
-module.exports = { load, expand, DEFAULTS };
+// 設定の置き場所。
+//
+// 🔴 Windows は**プログラムの隣に置かない**（本人決定 2026-09-12）。
+//    展開したフォルダは「はじめる.bat」のあと %LOCALAPPDATA%\MrDrop\app へ写され、
+//    元のフォルダは捨てられる。設定が隣にあると、捨てた瞬間に一緒に消える。
+//    記録（mrdrop.log）と同じ %LOCALAPPDATA%\MrDrop に置いて、入れ直しても残るようにする。
+//    Mac 版アプリはもともと Application Support の config.json を --config で渡してくる
+//    （mac/main.swift）ので、考え方は両OSで揃っている。
+function defaultFile(root) {
+  if (process.platform === "win32") {
+    return path.join(process.env.LOCALAPPDATA || os.homedir(), "MrDrop", "config.json");
+  }
+  return path.join(root, "config.json");
+}
+
+module.exports = { load, expand, defaultFile, DEFAULTS };

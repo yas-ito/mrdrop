@@ -12,7 +12,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { load } = require("./lib/config");
+const { load, defaultFile } = require("./lib/config");
 const { createServer } = require("./lib/http");
 const { Responder, browse, localIPv4s } = require("./lib/mdns");
 
@@ -62,7 +62,7 @@ function makeLogger() {
 }
 
 function parseArgs(argv) {
-  const a = { port: null, browse: false, followStdin: false, config: path.join(ROOT, "config.json") };
+  const a = { port: null, browse: false, followStdin: false, config: defaultFile(ROOT) };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--port") a.port = Number(argv[++i]);
     else if (argv[i] === "--config") a.config = argv[++i];
@@ -133,6 +133,7 @@ async function main() {
     : "  自動発見  使えません（ブラウザからは使えます）");
   if (cfg.token) log("  合言葉    設定されています（URL に ?t=… が要ります）");
   log(`  記録  ${LOG_FILE}`);
+  log(`  設定  ${cfg.file}`);
   log("");
   // 🔴 log() ではなく console.log。isTTY はタスク起動時に嘘をつく（見えないコンソールが
   //    割り当てられる）ので、これを log() で書くと記録に「Ctrl+C」が紛れ込む。

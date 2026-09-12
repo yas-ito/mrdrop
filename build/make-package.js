@@ -12,7 +12,8 @@
 //        https://raw.githubusercontent.com/nodejs/node/v<版>/LICENSE
 //
 // 中身（受け取る人から見える名前）:
-//   MrDrop_v<版>_win/はじめる.bat                 ← 🔴 1回押すと常駐（黒い画面は出ない）
+//   MrDrop_v<版>_win/はじめる.bat                 ← 🔴 1回押すと %LOCALAPPDATA% へ写って常駐
+//   MrDrop_v<版>_win/やめる.bat                   ← 入れる前に戻す（届いたファイルは残る）
 //   MrDrop_v<版>_win/保存先を変える.bat           ← フォルダ選択で保存先を変える
 //   MrDrop_v<版>_win/保存先を開く.bat             ← 保存先をエクスプローラで開く
 //   MrDrop_v<版>_win/取扱説明書.html
@@ -101,7 +102,10 @@ const manual = (buf, bundled) => {
 
 // 🔴 bat は ASCII・CRLF。cmd.exe は .bat を CP932 として読むので、日本語が混ざると壊れる。
 //    .gitattributes で CRLF に固定してあるが、ここでも直して検査する（作る側で完結させる）。
-const BATS = ["はじめる.bat", "保存先を変える.bat", "保存先を開く.bat", "scripts/run-once.bat"];
+// 🔴 .bat は**渡す ZIP の中だけ**の入口。入れたあと（%LOCALAPPDATA%\MrDrop\app）には
+//    写さない（cmd.exe が実行中の .bat を掴んだままなので、やめる操作で事故る）。
+//    入れたあとの入口はスタートメニューのショートカット。install-windows.ps1 を見ること。
+const BATS = ["はじめる.bat", "やめる.bat", "保存先を変える.bat", "保存先を開く.bat", "scripts/run-once.bat"];
 const bats = BATS.map((n) => {
   let b = read(n);
   if (b.some((c) => c >= 128)) fail(n + " に非ASCIIが混ざっています（cmd が CP932 で読むため壊れます）");
