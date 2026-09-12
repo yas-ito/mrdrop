@@ -12,7 +12,14 @@
 const fs = require("fs");
 const path = require("path");
 
-const PROJ = "C:\\Users\\yasma\\Desktop\\Mr.Drop紹介動画";
+// 🔴 **Premiere が持っているのと同じ道で書くこと。**
+//    デスクトップが OneDrive にリダイレクトされている PC では、同じフォルダが
+//      C:\Users\yasma\Desktop\…                 （シェルから見える道）
+//      C:\Users\yasma\OneDrive\デスクトップ\…   （Premiere が持っている道）
+//    の2通りに見える。XML を前者で書くと、プロジェクトの根っこが2つになり、
+//    **プロジェクトマネージャーが -1609629695 でこける**（2026-09-12 実機で確認）。
+//    再生や編集はできるので気づきにくい。
+const PROJ = "C:\\Users\\yasma\\OneDrive\\デスクトップ\\Mr.Drop紹介動画";
 const V = path.join(PROJ, "素材", "映像");
 const A = path.join(PROJ, "素材", "音声");
 const Z = path.join(PROJ, "素材", "図");
@@ -75,6 +82,20 @@ function url(p) {
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const rate = `<rate><timebase>${FPS}</timebase><ntsc>FALSE</ntsc></rate>`;
 
+// 実際の長さを ffprobe で読む。仮の長さ（1時間）を書くと、
+// Premiere が実体と食い違って**メディアオフライン**になることがある。
+const { execFileSync } = require("child_process");
+const FFPROBE = "C:\\yas-tools\\_tools\\ffprobe.exe";
+function realFrames(p) {
+  try {
+    const s = execFileSync(FFPROBE, ["-v", "error", "-show_entries", "format=duration",
+      "-of", "default=nw=1:nk=1", p], { encoding: "utf8" }).trim();
+    const sec = parseFloat(s);
+    if (isFinite(sec) && sec > 0) return Math.max(1, Math.round(sec * FPS));
+  } catch (e) { }
+  return FPS * 3600;
+}
+
 let fileId = 0;
 const seenFile = new Map();
 function fileTag(p, isStill, isAudio) {
@@ -82,10 +103,13 @@ function fileTag(p, isStill, isAudio) {
   if (seenFile.has(p)) return `<file id="${seenFile.get(p)}"/>`;
   const id = "file-" + (++fileId);
   seenFile.set(p, id);
-  const dur = isStill ? FPS * 3600 : FPS * 3600;   // 長めに書いておけば足りる
+  const dur = isStill ? FPS * 3600 : realFrames(p);
+  // 🔴 音の無い映像に <audio> を書いてはいけない。
+  //    PC の画面録画（gdigrab）は音声トラックが無いので、あると書くと
+  //    Premiere がリンクできず「メディアオフライン」になる（2026-09-12 実機で確認）。
   const media = isAudio
     ? `<media><audio><samplecharacteristics><depth>16</depth><samplerate>48000</samplerate></samplecharacteristics><channelcount>2</channelcount></audio></media>`
-    : `<media><video><samplecharacteristics><width>1920</width><height>1080</height></samplecharacteristics></video>${isStill ? "" : "<audio><samplecharacteristics><depth>16</depth><samplerate>48000</samplerate></samplecharacteristics><channelcount>2</channelcount></audio>"}</media>`;
+    : `<media><video>${rate}<samplecharacteristics>${rate}<width>1920</width><height>1080</height><pixelaspectratio>square</pixelaspectratio></samplecharacteristics></video></media>`;
   return `<file id="${id}"><name>${esc(name)}</name><pathurl>${url(p)}</pathurl>${rate}<duration>${dur}</duration>${media}</file>`;
 }
 
