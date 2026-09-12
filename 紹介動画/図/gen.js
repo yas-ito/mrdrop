@@ -23,7 +23,10 @@ const CSS = `
 body{width:1920px;height:1080px;overflow:hidden;
   background:linear-gradient(150deg,#0f3d9e 0%,#1c5fd0 55%,#2472e8 100%);
   color:#fff;font-weight:500;
-  font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  /* 🔴 "Noto Sans JP" を先頭に置くこと。Mac には Hiragino Sans があるので、
+     Hiragino を先にすると **Windows で作った図と別の絵になる**（2026-09-12 に実際に食い違った）。
+     Windows には Hiragino が無いので、この順にしても Windows 側の出来上がりは変わらない。 */
+  font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;}
 .wrap{width:1920px;height:1080px;padding:96px 120px;display:flex;flex-direction:column;}
 .logo{display:flex;align-items:center;gap:24px;}
@@ -46,6 +49,10 @@ h2{font-size:76px;line-height:1.22;font-weight:700;}
   padding:14px 34px;font-size:34px;font-weight:700;}
 .chip{display:inline-block;border:1px solid rgba(255,255,255,.4);border-radius:999px;
   padding:12px 28px;font-size:28px;}
+/* 🔴 テロップは画面の下 y=934〜1050 に出る（2026-09-12 に実機のフレームで実測）。
+   ここに物を置くと必ずかぶる。**画面のいちばん下に置く要素には .above-telop を付ける。**
+   position:relative なので、まわりのレイアウトは1pxも動かさずに持ち上げられる。 */
+.above-telop{position:relative;bottom:90px;}
 .big-plus{font-size:88px;font-weight:700;opacity:.85;}
 `;
 
@@ -106,7 +113,7 @@ const title = page(`<div class="wrap">
   <h1>iPhone のデータを、<br>Windows に送れる。</h1>
   <div class="lead" style="margin-top:40px;">同じ Wi-Fi の中で、そのまま。インターネットを通りません。</div>
  </div>
- <div class="row" style="gap:20px;">
+ <div class="row above-telop" style="gap:20px;">
   <div class="chip">Windows 10 / 11</div><div class="chip">macOS 13 以降</div>
   <div class="chip">iPhone アプリは無料</div>
  </div>
@@ -176,7 +183,7 @@ const end = page(`<div class="wrap">
    <div class="chip">App Store で「Mr.Drop」</div>
   </div>
  </div>
- <div class="foot" style="text-align:center;">yas-tools</div>
+ <div class="foot above-telop" style="text-align:center;">yas-tools</div>
 </div>`);
 
 for (const [name, html] of [
