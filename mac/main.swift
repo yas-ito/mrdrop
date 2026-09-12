@@ -33,6 +33,7 @@ final class App: NSObject, NSApplicationDelegate {
     private var status = "起動中…"
     private var addresses: [String] = []       // サーバーが名乗った住所（http://…）
     private var inboxFromServer: String?       // サーバーが実際に使っている保存先
+    private var nameFromServer: String?        // iPhone の一覧に出ている名前（displayName）
     private var logFile: String?               // サーバーの記録ファイル
     private var received = 0
     private var restarts = 0
@@ -164,6 +165,12 @@ final class App: NSObject, NSApplicationDelegate {
             if let r = line.range(of: #"https?://[^\s（）()]+"#, options: .regularExpression) {
                 let url = String(line[r])
                 if !addresses.contains(url) { addresses.append(url) }
+            } else if line.hasPrefix("Mr.Drop ") {
+                // "Mr.Drop 1.0.0   やすの Mac" ← 版のあとが、iPhone の一覧に出る名前
+                let rest = String(line.dropFirst("Mr.Drop ".count))
+                if let sp = rest.firstIndex(of: " ") {
+                    nameFromServer = String(rest[sp...]).trimmingCharacters(in: .whitespaces)
+                }
             } else if line.hasPrefix("保存先") {
                 inboxFromServer = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
             } else if line.hasPrefix("記録") {
@@ -203,6 +210,7 @@ final class App: NSObject, NSApplicationDelegate {
         m.addItem(.separator())
         add(m, "保存先を開く", #selector(openInbox), key: "o")
         add(m, "保存先を変える…", #selector(chooseInbox))
+        add(m, "この PC の名前を変える…", #selector(setName))
         add(m, "合言葉を決める…", #selector(setToken))
         add(m, "記録を開く", #selector(openLog))
         let login = add(m, "ログイン時に起動", #selector(toggleLogin))
@@ -287,6 +295,50 @@ final class App: NSObject, NSApplicationDelegate {
         restartServer()
     }
 
+    /// iPhone の「送り先」の一覧に出る名前。
+    ///
+    /// 🔴 既定はホスト名そのまま（`yasnoMac-mini.local`）で、人には読み分けられない。
+    ///    本人の iPhone に `yas`（Windows 機）と `yasnoMac-mini-local`（この Mac）が並び、
+    ///    `yas` を選んで送って「送ったのに Mac に無い＝消えた」と誤解した（2026-09-12 実機）。
+    ///    動きは正常で、分からないのは名前の方だった。**名前を付けられる口が要る。**
+    /// 🔵 中身・文言・置き場所とも Windows 版（scripts/settings-windows.ps1 の -ChooseName）と揃えてある。
+    ///    どちらかを直したら、もう片方も。`server/` 側は何も要らない（cfg.name を既に見ている）。
+    @objc private func setName() {
+        let now = (readConfig()?["name"] as? String) ?? ""
+        // 🔴 サーバー（node の os.hostname()）と Swift の ProcessInfo では大文字小文字が違うことがある
+        //    （実測: os.hostname() は yasnoMac-mini.local ／ ProcessInfo は yasnomac-mini.local）。
+        //    名前が空のときは「いま名乗っている名前」がそのまま戻り先なので、そちらを見せる。
+        let pcName = (now.isEmpty ? nameFromServer : nil) ?? ProcessInfo.processInfo.hostName
+        let a = NSAlert()
+        a.messageText = "この PC の名前"
+        a.informativeText = """
+            iPhone の「送り先」の一覧に、この名前で出ます。
+            うちの居間の Mac、編集用、などと付けておくと迷いません。
+            空にすると、この Mac の名前（\(pcName)）に戻ります。
+            """
+        if let seen = nameFromServer, !seen.isEmpty, seen != pcName {
+            a.informativeText += "\n\nいま出ている名前: \(seen)"
+        }
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.stringValue = now
+        field.placeholderString = pcName
+        field.formatter = MaxLength(40)         // Windows の TextBox.MaxLength = 40 と同じ
+        a.accessoryView = field
+        a.window.initialFirstResponder = field
+        a.addButton(withTitle: "決定")
+        a.addButton(withTitle: "やめる")
+        NSApp.activate(ignoringOtherApps: true)
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        let new = field.stringValue.trimmingCharacters(in: .whitespaces)
+        // 🔴 制御文字は入れさせない（mDNS の名前にそのまま乗る）
+        if new.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7f }) {
+            alert("その名前は使えません", "見えない文字が入っています。"); return
+        }
+        guard new != now else { return }
+        writeConfig { $0["name"] = new }
+        restartServer()
+    }
+
     @objc private func quit() { NSApp.terminate(nil) }
 
     // MARK: - 設定（config.json はサーバーが作る。ここでは変えたい所だけ書く）
@@ -320,5 +372,29 @@ final class App: NSObject, NSApplicationDelegate {
         a.informativeText = body
         NSApp.activate(ignoringOtherApps: true)
         a.runModal()
+    }
+}
+
+
+/// 決めた文字数より先を打たせない。NSTextField は maxLength を持っていないので Formatter で止める。
+/// （mDNS の名前に乗るので、Windows 版の TextBox.MaxLength = 40 と揃えるために要る）
+private final class MaxLength: Formatter {
+    private let limit: Int
+    init(_ limit: Int) { self.limit = limit; super.init() }
+    required init?(coder: NSCoder) { fatalError("使わない") }
+
+    override func string(for obj: Any?) -> String? { obj as? String }
+
+    override func getObjectValue(_ obj: AutoreleasingUnsafeMutablePointer<AnyObject?>?,
+                                 for string: String,
+                                 errorDescription _: AutoreleasingUnsafeMutablePointer<NSString?>?) -> Bool {
+        obj?.pointee = string as NSString
+        return true
+    }
+
+    override func isPartialStringValid(_ partial: String,
+                                       newEditingString _: AutoreleasingUnsafeMutablePointer<NSString?>?,
+                                       errorDescription _: AutoreleasingUnsafeMutablePointer<NSString?>?) -> Bool {
+        return partial.count <= limit
     }
 }

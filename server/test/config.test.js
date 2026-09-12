@@ -41,8 +41,13 @@ module.exports = async function (t) {
     if (!fs.existsSync(ps1)) { ok(true, "settings-windows.ps1 が無い（配布物の中では省かれる）"); return; }
     const src = fs.readFileSync(ps1, "utf8");
     const pick = (k) => (src.match(new RegExp(k + String.raw`\s*=\s*"([^"]+)"`)) || [])[1];
-    eq(pick("inbox"), DEFAULTS.inbox, "inbox の既定がそろっている");
-    eq(pick("outbox"), DEFAULTS.outbox, "outbox の既定がそろっている");
+    // 🔴 文字どおり突き合わせない。既定の**書き方**は OS で変わるため
+    //    （JS は Mac で "~/Downloads"、PowerShell はいつも "%USERPROFILE%\Downloads"）、
+    //    そのまま比べると **Mac では何を直しても必ず赤くなる**（2026-09-12 に Mac で発覚）。
+    //    見たいのは書き方ではなく「**同じ場所を指しているか**」なので、expand() に通してから比べる。
+    const where = (v) => (typeof v === "string" ? path.resolve(expand(v)) : String(v));
+    eq(where(pick("inbox")), where(DEFAULTS.inbox), "inbox の既定がそろっている");
+    eq(where(pick("outbox")), where(DEFAULTS.outbox), "outbox の既定がそろっている");
     eq(String((src.match(/port\s*=\s*(\d+)/) || [])[1]), String(DEFAULTS.port), "port の既定がそろっている");
   });
 
