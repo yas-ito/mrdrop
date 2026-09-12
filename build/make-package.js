@@ -13,6 +13,7 @@
 //
 // 中身（受け取る人から見える名前）:
 //   MrDrop_v<版>_win/はじめる.bat                 ← 🔴 1回押すと %LOCALAPPDATA% へ写って常駐
+//   MrDrop_v<版>_win/MrDropTray.exe               ← 🔴 タスクバー常駐（本体を抱える）
 //   MrDrop_v<版>_win/アンインストール.bat         ← 入れる前に戻す（届いたファイルは残る）
 //   MrDrop_v<版>_win/保存先を変える.bat           ← フォルダ選択で保存先を変える
 //   MrDrop_v<版>_win/保存先を開く.bat             ← 保存先をエクスプローラで開く
@@ -126,6 +127,9 @@ const ps1s = PS1S.map((n) => {
 const items = [
   ...bats,
   ["取扱説明書.html", manual(read("取扱説明書.html"), nodeExe)],
+  // 🔴 常駐アイコン。build/build-tray.ps1 で作る（Windows 標準の csc.exe だけ）。
+  //    展開した根に置く。中の C# が「自分の隣に node/ server/ がある」前提で動く。
+  ["MrDropTray.exe", read("tray/MrDropTray.exe")],
   ["server/mrdrop.js", read("server/mrdrop.js")],
   ["server/lib/config.js", read("server/lib/config.js")],
   ["server/lib/http.js", read("server/lib/http.js")],

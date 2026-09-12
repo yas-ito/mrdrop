@@ -1,16 +1,23 @@
 ﻿# Mr.Drop を「いつでも使える状態」にする。
 #
-#   .\scripts\install-windows.ps1            入れる（写す・壁を開ける・ログオン時に自動起動）
+#   .\scripts\install-windows.ps1            入れる（写す・壁を開ける・タスクバーに常駐）
 #   .\scripts\install-windows.ps1 -Status    いまどうなっているかを見るだけ
 #   .\scripts\install-windows.ps1 -Uninstall 入れる前に戻す（届いたファイルは消しません）
 #
-# 🔴 管理者が要ります（ファイアウォールと、窓を出さない自動起動 S4U の登録）。
+# 🔴 管理者が要るのは**ファイアウォールを開ける1回だけ**です。
+#    自動起動はレジストリの Run なので、管理者は要りません。
 #
 # 🔴 **展開したフォルダから直接動かさない**（本人が実際につまずいた 2026-09-12）。
 #    ダウンロードフォルダで展開してここを押す人が普通なので、そのまま動かすと
 #    「片付けようとしたら消せない」「片付けたら黙って壊れる」のどちらかになる。
-#    だから中身を %LOCALAPPDATA%\MrDrop\app へ写し、タスクは写した先を指す。
+#    だから中身を %LOCALAPPDATA%\MrDrop\app へ写し、そこから動かす。
 #    展開したフォルダは、押したあと捨ててよい。どこで展開しても構わない。
+#
+# 🔴 常駐は **MrDropTray.exe（タスクバー右下のアイコン）** が受け持つ（本人決定 2026-09-12）。
+#    アイコンが node を子として抱え、アイコンを終了すれば本体も終わる。
+#    Mac 版（メニューバー常駐）とまったく同じ考え方。
+#    前はタスクスケジューラの S4U で窓なし常駐にしていたが、
+#    **動いているかがどこにも見えない**のが致命的だった。古いタスクはここで片付ける。
 
 [CmdletBinding()]
 param(
@@ -20,7 +27,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Repo      = Split-Path -Parent $PSScriptRoot
-$TaskName  = "MrDrop"
+$OldTask   = "MrDrop"                               # 昔の作り。あれば外す
 $RuleTcp   = "MrDrop (受信 TCP)"
 $RuleUdp   = "MrDrop (自動発見 mDNS UDP 5353)"
 
@@ -29,15 +36,17 @@ $AppDir    = Join-Path $env:LOCALAPPDATA "MrDrop"
 $AppRoot   = Join-Path $AppDir "app"                # ← プログラム本体を写す先
 $CfgFile   = Join-Path $AppDir "config.json"        # ← server/lib/config.js の defaultFile と同じ
 $LogFile   = Join-Path $AppDir "mrdrop.log"
-$OldVbs    = Join-Path $AppDir "start-hidden.vbs"   # 昔の作り。あれば片付ける
+$OldVbs    = Join-Path $AppDir "start-hidden.vbs"   # もっと昔の作り。あれば片付ける
 $MenuDir   = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Mr.Drop"
+$TrayExe   = Join-Path $AppRoot "MrDropTray.exe"
+$RunKey    = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$RunName   = "MrDrop"
 
 # 🔴 写すのは**これだけ**。.bat は写さない。
 #    cmd.exe は実行中の .bat を開いたまま行単位で読み直すので、やめる操作で
 #    自分のいるフォルダを消すと「バッチ ファイルが見つかりません」になる。
-#    入れたあとの入口はスタートメニューのショートカット（powershell を直接呼ぶ）。
 $CopyDirs  = @("server", "scripts", "node")
-$CopyFiles = @("取扱説明書.html")
+$CopyFiles = @("取扱説明書.html", "MrDropTray.exe")
 
 function Head($s) { Write-Host ""; Write-Host "== $s" -ForegroundColor Cyan }
 function Say($s)  { Write-Host "   $s" }
@@ -51,7 +60,6 @@ function Test-Admin {
 }
 
 # 配布物には node.exe を同梱できる（build/make-package.js --with-node）。
-# 同梱されていれば PATH より先にそちらを使う。受け取った人が Node を入れていなくても動く。
 function Get-NodePath($root) {
   $bundled = Join-Path $root "node\node.exe"
   if (Test-Path -LiteralPath $bundled) { return $bundled }
@@ -71,17 +79,26 @@ function Test-Listening($port) {
   [bool](Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
 }
 
+function Get-TrayProcesses {
+  Get-Process -Name "MrDropTray" -ErrorAction SilentlyContinue
+}
+
 # 動いているものを止めて、**番号が空くまで待つ**。
-# 🔴 Stop-ScheduledTask はすぐには殺さない。待たずに先へ進むと、
-#    ① 写すときに node.exe が掴まれたままで上書きできない
+# 🔴 待たずに先へ進むと、① 写すときに node.exe を掴まれたままで上書きできない
 #    ② 古い方が番号を握ったまま新しい方が立ち上がって、両方死ぬ（実際に踏んだ）
 function Stop-Running($port) {
-  if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+  Get-TrayProcesses | ForEach-Object { try { $_.CloseMainWindow() | Out-Null } catch { } }
+  Start-Sleep -Milliseconds 300
+  Get-TrayProcesses | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+
+  # 昔の作り（タスクスケジューラ）が残っていれば、そちらも止める
+  if (Get-ScheduledTask -TaskName $OldTask -ErrorAction SilentlyContinue) {
+    Stop-ScheduledTask -TaskName $OldTask -ErrorAction SilentlyContinue
   }
   Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
     Where-Object { $_.CommandLine -like "*mrdrop.js*" } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
   foreach ($i in 1..40) {
     if (-not (Test-Listening $port)) { return $true }
     Start-Sleep -Milliseconds 300
@@ -116,13 +133,13 @@ if ($Status) {
     if (Get-NetFirewallRule -DisplayName $r -ErrorAction SilentlyContinue) { Say "壁の穴         : $r … あり" }
     else { Warn "壁の穴         : $r … ありません" }
   }
-  $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-  if ($task) {
-    Say "自動起動       : あり（$($task.State) / $($task.Principal.LogonType)）"
-    Say "  動かすもの   : $($task.Actions[0].Execute)"
-    $info = Get-ScheduledTaskInfo -TaskName $TaskName
-    Say "  最後の実行   : $($info.LastRunTime)  結果: $($info.LastTaskResult)"
-  } else { Warn "自動起動       : ありません" }
+  $run = (Get-ItemProperty -Path $RunKey -Name $RunName -ErrorAction SilentlyContinue).$RunName
+  if ($run) { Say "自動起動       : あり（$run）" } else { Warn "自動起動       : ありません" }
+  $tp = Get-TrayProcesses
+  if ($tp) { Say "常駐アイコン   : 出ています（PID $($tp[0].Id)）" } else { Warn "常駐アイコン   : 出ていません" }
+  if (Get-ScheduledTask -TaskName $OldTask -ErrorAction SilentlyContinue) {
+    Warn "昔のタスク     : 残っています（入れ直すと片付きます）"
+  }
   if (Test-Path -LiteralPath $MenuDir) { Say "スタートメニュー: $MenuDir" }
   if (Test-Listening $port) { Say "いま           : 動いています" } else { Warn "いま           : 動いていません" }
   if (Test-Path -LiteralPath $LogFile) { Say "記録           : $LogFile" }
@@ -135,11 +152,19 @@ if ($Uninstall) {
   Head "Mr.Drop を入れる前に戻します"
   $port = Get-Port
 
-  if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+  # 自動起動を外す（管理者は要らない）
+  if ((Get-ItemProperty -Path $RunKey -Name $RunName -ErrorAction SilentlyContinue).$RunName) {
+    Remove-ItemProperty -Path $RunKey -Name $RunName -ErrorAction SilentlyContinue
     Say "自動起動を外しました"
   }
+  # 昔の作り（タスクスケジューラ）も片付ける
+  if (Get-ScheduledTask -TaskName $OldTask -ErrorAction SilentlyContinue) {
+    Stop-ScheduledTask -TaskName $OldTask -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName $OldTask -Confirm:$false -ErrorAction SilentlyContinue
+    Say "昔の自動起動（タスク）も外しました"
+  }
+
+  Get-TrayProcesses | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue; Say "常駐アイコンを閉じました（$($_.Id)）" }
   Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
     Where-Object { $_.CommandLine -like "*mrdrop.js*" } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; Say "動いていたものを止めました（$($_.ProcessId)）" }
@@ -165,6 +190,7 @@ if ($Uninstall) {
   #    PowerShell は .ps1 を掴み続けないので、自分のいるフォルダごと消せる（実測で確認）。
   #    .bat をここへ写さないのは、cmd.exe が同じことをできないため。
   if (Test-Path -LiteralPath $AppDir) {
+    Start-Sleep -Milliseconds 500      # 閉じたばかりの .exe が離れるのを待つ
     try {
       Remove-Item -LiteralPath $AppDir -Recurse -Force -ErrorAction Stop
       Say "入れたもの・設定・記録を消しました（$AppDir）"
@@ -184,25 +210,25 @@ if ($Uninstall) {
 if (-not (Test-Path -LiteralPath (Join-Path $Repo "server\mrdrop.js"))) {
   Fail "server\mrdrop.js が見つかりません。ZIP をフォルダごと展開してください。"
 }
+if (-not (Test-Path -LiteralPath (Join-Path $Repo "MrDropTray.exe"))) {
+  Fail "MrDropTray.exe が見つかりません。ZIP をフォルダごと展開してください。"
+}
 if (-not (Get-NodePath $Repo)) {
   Fail "Node が見つかりません。先に Node を入れてください（https://nodejs.org/ja の LTS）。"
 }
 
-# 🔴 管理者が要る理由は2つ:
-#    ① ファイアウォールを開ける（すでに開いていれば要らない）
-#    ② 窓を出さない自動起動（S4U）の登録。これは既定で管理者しか登録できない
-if (-not (Test-Admin)) {
-  Fail "管理者の PowerShell で実行してください（ファイアウォールと、窓を出さない自動起動の登録に要ります）。"
-}
-
+# 🔴 管理者が要るのはファイアウォールだけ。すでに開いていれば無しでも通る。
 $port = Get-Port
+$needFirewall = @($RuleTcp, $RuleUdp) | Where-Object { -not (Get-NetFirewallRule -DisplayName $_ -ErrorAction SilentlyContinue) }
+if ($needFirewall.Count -gt 0 -and -not (Test-Admin)) {
+  Fail "管理者の PowerShell で実行してください（ファイアウォールを開けるのに要ります）。"
+}
 
 Head "1. この PC の中へ写す"
 Say "写す先 : $AppRoot"
 if ($Repo -eq $AppRoot) {
   Say "すでにここから動いています（写しません）"
 } else {
-  # 動いているものを先に止める。node.exe を掴まれたままだと上書きできない。
   if (-not (Stop-Running $port)) {
     Warn "前のものが $port 番を離しません。パソコンを再起動してからやり直してください。"
   }
@@ -212,9 +238,7 @@ if ($Repo -eq $AppRoot) {
     if (-not (Test-Path -LiteralPath $from)) { continue }
     $to = Join-Path $AppRoot $d
     # /MIR で古い版の残骸も消える。robocopy の 0〜7 は成功、8 以上が失敗。
-    # 🔴 /XF *.bat … 「入れたあとの場所に .bat を置かない」を守る。
-    #    scripts\ をまるごと写すので、その中の run-once.bat がここを
-    #    すり抜けていた（2026-09-12 の実測で発覚）。
+    # 🔴 /XF *.bat …「入れたあとの場所に .bat を置かない」を守る。
     robocopy $from $to /MIR /XF *.bat /NFL /NDL /NJH /NJS /NP /R:2 /W:1 | Out-Null
     if ($LASTEXITCODE -ge 8) { Fail "写せませんでした（$from → $to）。robocopy の戻り値: $LASTEXITCODE" }
     Say "  $d"
@@ -223,14 +247,12 @@ if ($Repo -eq $AppRoot) {
     $from = Join-Path $Repo $f
     if (Test-Path -LiteralPath $from) { Copy-Item -LiteralPath $from -Destination (Join-Path $AppRoot $f) -Force; Say "  $f" }
   }
-  # 🔴 /XF で除いたファイルは、/MIR でも**消えない**（実測 2026-09-12）。
+  # 🔴 /XF で除いたファイルは /MIR でも**消えない**（実測 2026-09-12）。
   #    robocopy の除外は「無かったことにする」なので、古い版が置いていった .bat が
   #    ここに残り続ける。除外だけでは足りないので、写したあとに自分で掃く。
-  #    （入れた場所に .bat を置かない理由は、上の $CopyDirs のところに書いてある）
   Get-ChildItem -LiteralPath $AppRoot -Recurse -Filter *.bat -ErrorAction SilentlyContinue |
     ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
-  # 展開したフォルダに古い config.json があって、こちらに無いなら引き継ぐ
-  # （run-once.bat しか使っていなかった人の保存先を捨てないため）。
+  # 展開したフォルダに古い config.json があって、こちらに無いなら引き継ぐ。
   $oldCfg = Join-Path $Repo "config.json"
   if ((Test-Path -LiteralPath $oldCfg) -and -not (Test-Path -LiteralPath $CfgFile)) {
     New-Item -ItemType Directory -Path $AppDir -Force | Out-Null
@@ -239,13 +261,10 @@ if ($Repo -eq $AppRoot) {
   }
 }
 New-Item -ItemType Directory -Path $AppDir -Force | Out-Null
-$Entry = Join-Path $AppRoot "server\mrdrop.js"
-$node  = Get-NodePath $AppRoot
-if (-not $node) { Fail "写したあとに Node が見つかりません: $AppRoot" }
+if (-not (Test-Path -LiteralPath $TrayExe)) { Fail "写したあとに MrDropTray.exe が見つかりません: $AppRoot" }
 
 Head "2. ファイアウォールを開ける"
-$missing = @($RuleTcp, $RuleUdp) | Where-Object { -not (Get-NetFirewallRule -DisplayName $_ -ErrorAction SilentlyContinue) }
-if ($missing.Count -eq 0) {
+if ($needFirewall.Count -eq 0) {
   Say "すでに開いています（触りません）"
 } else {
   # 🔴 プライベート（家・職場）だけ。公衆 Wi-Fi では開けない。
@@ -261,55 +280,51 @@ if ($missing.Count -eq 0) {
   }
 }
 
-Head "3. ログオンしたら勝手に動くようにする"
-# 🔴 node を直接起動する。VBS や cmd を挟むと引用符で必ず事故る（実際に踏んだ）。
-#    窓を出さないのは S4U（対話セッションを持たない実行）でやる。パスワードは要らない。
-#    記録は mrdrop.js が自分で $LogFile に書くので、リダイレクトも不要。
+Head "3. 昔の作りを片付ける"
+# 🔴 前の版はタスクスケジューラ（S4U）で常駐していた。残したままだと
+#    二重に立ち上がって「48630 番はすでに使われています」で両方死ぬ。
+if (Get-ScheduledTask -TaskName $OldTask -ErrorAction SilentlyContinue) {
+  Stop-ScheduledTask -TaskName $OldTask -ErrorAction SilentlyContinue
+  Unregister-ScheduledTask -TaskName $OldTask -Confirm:$false -ErrorAction SilentlyContinue
+  Say "昔の自動起動（タスク $OldTask）を外しました"
+} else {
+  Say "残っていません"
+}
 if (Test-Path -LiteralPath $OldVbs) { Remove-Item -LiteralPath $OldVbs -Force; Say "昔の起動役（VBS）を片付けました" }
 
-if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-  Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-  Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-}
-$me        = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$action    = New-ScheduledTaskAction -Execute $node -Argument """$Entry""" -WorkingDirectory $AppRoot
-$trigger   = New-ScheduledTaskTrigger -AtLogOn -User $me
-$principal = New-ScheduledTaskPrincipal -UserId $me -LogonType S4U -RunLevel Limited
-$set       = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-               -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
-  -Principal $principal -Settings $set -Description "iPhone から同じ Wi-Fi でファイルを受け取る常駐" | Out-Null
+Head "4. ログオンしたら勝手に出るようにする"
+# 🔴 レジストリの Run。管理者は要らない。アイコン側のメニューからも切り替えられる。
+Set-ItemProperty -Path $RunKey -Name $RunName -Value ("`"$TrayExe`"")
+$run = (Get-ItemProperty -Path $RunKey -Name $RunName -ErrorAction SilentlyContinue).$RunName
+if (-not $run) { Fail "自動起動を登録できませんでした。" }
+Say "登録しました: $run"
 
-# 🔴 Register-ScheduledTask は CIM 越しなので、失敗しても $ErrorActionPreference="Stop" で
-#    止まらないことがある（実際にアクセス拒否を握りつぶして「作りました」と嘘をついた）。
-#    作れたかどうかは、必ず自分の目で確かめる。
-if (-not (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
-  Fail "タスクを作れませんでした。上のエラーを見てください。"
-}
-Say "タスク $TaskName を作りました（$me / S4U）"
-
-Head "4. スタートメニューに入口を作る"
-# 🔴 ここが入れたあとの唯一の入口。展開したフォルダを捨てても使えるようにする。
-#    ショートカットは powershell を直接呼ぶ（.bat を挟むと、やめるときに
-#    cmd.exe が自分の .bat を掴んだまま消されて事故る）。
-$ps        = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-$settings  = Join-Path $AppRoot "scripts\settings-windows.ps1"
-$common    = "-NoProfile -ExecutionPolicy Bypass -File ""$settings"""
+Head "5. スタートメニューに入口を作る"
+# 🔴 ふだんの入口は**タスクバー右下のアイコン**。ここは「閉じてしまった人が戻る道」。
 New-Item -ItemType Directory -Path $MenuDir -Force | Out-Null
 Get-ChildItem -LiteralPath $MenuDir -Filter *.lnk -ErrorAction SilentlyContinue | Remove-Item -Force
-New-Shortcut (Join-Path $MenuDir "保存先を変える.lnk")   $ps "$common -ChooseInbox -Pause" $AppRoot "iPhone から届いたものを入れるフォルダを選ぶ"
-New-Shortcut (Join-Path $MenuDir "保存先を開く.lnk")     $ps "$common -OpenInbox"          $AppRoot "届いたものが入るフォルダを開く"
-New-Shortcut (Join-Path $MenuDir "Mr.Drop をアンインストール.lnk") $ps "$common -Uninstall -Pause" $AppRoot "Mr.Drop をこの PC から外す（届いたファイルは残ります）"
+New-Shortcut (Join-Path $MenuDir "Mr.Drop.lnk") $TrayExe $null $AppRoot "Mr.Drop を動かす（タスクバー右下に出ます）"
+$ps       = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+$settings = Join-Path $AppRoot "scripts\settings-windows.ps1"
+New-Shortcut (Join-Path $MenuDir "Mr.Drop をアンインストール.lnk") $ps `
+  "-NoProfile -ExecutionPolicy Bypass -File `"$settings`" -Uninstall -Pause" $AppRoot `
+  "Mr.Drop をこの PC から外す（届いたファイルは残ります）"
 $manual = Join-Path $AppRoot "取扱説明書.html"
 if (Test-Path -LiteralPath $manual) {
   New-Shortcut (Join-Path $MenuDir "取扱説明書.lnk") $manual $null $AppRoot "Mr.Drop の取扱説明書"
 }
 Say "スタートメニュー > Mr.Drop に入れました"
 
-Head "5. いま動かす"
-Start-ScheduledTask -TaskName $TaskName
+Head "6. いま動かす"
+# 🔴 管理者で動かしたままにしない。アイコンは**ふだんの自分**として出す必要がある
+#    （管理者の常駐は、他のアプリからドラッグできないなど行儀が悪い）。
+#    explorer.exe に頼むと、ログオンしている本人として立ち上がる。
+if (Test-Admin) {
+  Start-Process -FilePath (Join-Path $env:SystemRoot "explorer.exe") -ArgumentList "`"$TrayExe`""
+} else {
+  Start-Process -FilePath $TrayExe -WorkingDirectory $AppRoot
+}
 
-# 🔴 決め打ちで数秒待つと、まだ上がっていないのに「失敗」と言ってしまう。上がるまで見る。
 $up = $false
 for ($i = 0; $i -lt 40; $i++) {
   Start-Sleep -Milliseconds 500
@@ -326,9 +341,9 @@ if ($up) {
   Write-Host "  設定は済みましたが、まだ動いていません。" -ForegroundColor Yellow
 }
 Write-Host ""
+Write-Host "  🔵 タスクバーの右下に Mr.Drop のアイコンが出ています。" -ForegroundColor Green
+Write-Host "     右クリックで「保存先を変える」「アンインストール」ができます。"
+Write-Host ""
 Write-Host "  🔵 展開したフォルダは、もう消して構いません。" -ForegroundColor Green
 Write-Host "     この PC の中（$AppRoot）へ写してあります。"
-Write-Host ""
-Write-Host "  保存先を変える : スタートメニュー > Mr.Drop > 保存先を変える"
-Write-Host "  外したいとき   : スタートメニュー > Mr.Drop > Mr.Drop をアンインストール"
 Write-Host ""

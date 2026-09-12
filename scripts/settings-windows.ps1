@@ -4,6 +4,7 @@
 #   -OpenInbox      保存先をエクスプローラで開く（Mac の「保存先を開く」と同じ）
 #   -MakeResident   窓なしで常駐させる（install-windows.ps1 を呼ぶ。管理者へ昇格する）
 #   -Uninstall      入れる前に戻す（同上。届いたファイルは消さない）
+#   -FromTray       常駐アイコン（MrDropTray.exe）から呼ばれた。入れ直しは呼んだ側がやる
 #   -Pause          終わりに Enter を待つ。スタートメニューのショートカットから呼ぶとき用
 #                   （.bat には pause があるが、ショートカットは powershell を直接呼ぶので
 #                    これが無いと画面が一瞬で閉じて何も読めない）
@@ -18,12 +19,12 @@ param(
   [switch]$OpenInbox,
   [switch]$MakeResident,
   [switch]$Uninstall,
+  [switch]$FromTray,
   [switch]$Pause
 )
 
 $ErrorActionPreference = "Stop"
 $Repo     = Split-Path -Parent $PSScriptRoot
-$TaskName = "MrDrop"
 
 # 🔴 設定はプログラムの隣に置かない。%LOCALAPPDATA%\MrDrop\config.json 一本。
 #    server/lib/config.js の defaultFile() と**必ず同じ場所**にすること。
@@ -31,6 +32,9 @@ $TaskName = "MrDrop"
 #    ・展開したフォルダに残った .bat を押しても、入っている方の設定を触れる
 $AppDir   = Join-Path $env:LOCALAPPDATA "MrDrop"
 $CfgFile  = Join-Path $AppDir "config.json"
+$TrayExe  = Join-Path $AppDir "app\MrDropTray.exe"
+$RunKey   = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$RunName  = "MrDrop"
 
 function Say  ($m) { Write-Host "   $m" }
 function Head ($m) { Write-Host ""; Write-Host "== $m" -ForegroundColor Cyan }
@@ -113,20 +117,26 @@ function Invoke-Installer ([bool]$DoUninstall, [string]$denyMessage) {
   else { Fail "うまくいきませんでした。もう一度やり直してください。" }
 }
 
-# 常駐しているなら、設定を読み直させるために入れ直す。
-# 🔴 設定は起動時にしか読まないので、変えただけでは効かない。
-function Restart-IfResident {
-  $t = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-  if (-not $t) { return $false }
+# 設定を変えたら、常駐アイコンごと入れ直す。
+# 🔴 設定は起動したときにしか読まない。変えただけでは効かない。
+# 🔴 本体（node）を抱えているのは MrDropTray.exe なので、**アイコンを入れ直す**。
+#    前はタスクスケジューラを入れ直していた。その作りはもう無い。
+function Restart-Tray {
+  # アイコン自身から呼ばれたときは、入れ直しは向こうがやる（二重に殺さない）
+  if ($FromTray) { return $true }
+
+  $procs = @(Get-Process -Name "MrDropTray" -ErrorAction SilentlyContinue)
+  if (-not $procs) { return $false }
+
   $port = [int]((Read-Config).port)
   if (-not $port) { $port = 48630 }
-  try {
-    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 
-    # 🔴 Stop-ScheduledTask はプロセスをすぐには殺さない。待ち時間で逃げると、
-    #    古い方がポートを握ったまま新しい方が立ち上がり、
-    #    「48630 番はすでに使われています」で**両方止まる**（実際に踏んだ）。
-    #    だから時間ではなく、**ポートが空いたこと**を見てから起動する。
+  try {
+    foreach ($p in $procs) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+
+    # 🔴 プロセスはすぐには消えない。時間で逃げると、古い方が番号を握ったまま
+    #    新しい方が立ち上がり、「48630 番はすでに使われています」で**両方止まる**
+    #    （タスクスケジューラ時代に実際に踏んだ）。番号が空くのを見てから起動する。
     $freed = $false
     foreach ($i in 1..30) {
       Start-Sleep -Milliseconds 300
@@ -137,9 +147,9 @@ function Restart-IfResident {
       return $false
     }
 
-    Start-ScheduledTask -TaskName $TaskName
+    if (-not (Test-Path -LiteralPath $TrayExe)) { Warn "常駐アイコンが見つかりません: $TrayExe"; return $false }
+    Start-Process -FilePath $TrayExe -WorkingDirectory (Split-Path -Parent $TrayExe)
 
-    # 立ち上がったことも自分の目で確かめる（黙って失敗するのが一番こまる）。
     foreach ($i in 1..20) {
       Start-Sleep -Milliseconds 300
       if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) { return $true }
@@ -198,8 +208,8 @@ if ($ChooseInbox) {
 
   Write-Host ""
   Say "保存先を変えました: $new"
-  if (Restart-IfResident) { Say "常駐を入れ直したので、もう効いています。" }
-  else { Warn "scripts\run-once.bat で動かしているときは、一度閉じてから開き直してください。" }
+  if (Restart-Tray) { Say "常駐を入れ直したので、もう効いています。" }
+  else { Warn "動いていなければ、次に Mr.Drop を開いたときから効きます。" }
   Write-Host ""
   Wait-IfAsked
   exit 0
@@ -219,7 +229,7 @@ if ($MakeResident) {
   Say "これから、次の3つをやります。1回だけです。"
   Say "  1. この PC の中（$(Join-Path $AppDir 'app')）へ写す"
   Say "  2. ファイアウォールを開ける（同じ Wi-Fi の中だけ）"
-  Say "  3. パソコンを起動したら、勝手に動くようにする（黒い画面は出ません）"
+  Say "  3. タスクバーの右下に常駐させる（パソコンを起動したら勝手に出ます）"
   Write-Host ""
   Say "🔴 Windows が「許可しますか」と聞いてきます。「はい」を押してください。"
   Write-Host ""
@@ -231,16 +241,18 @@ if ($MakeResident) {
   # 🔴 install-windows.ps1 は CIM 越しなので、失敗しても止まらないことがある。
   #    作れたかどうかは、必ず自分の目で確かめる（install 側と同じ理由）。
   Write-Host ""
-  if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+  $run = (Get-ItemProperty -Path $RunKey -Name $RunName -ErrorAction SilentlyContinue).$RunName
+  if ($run) {
     Head "できました"
     Say "もう何もしなくて大丈夫です。"
-    Say "パソコンを起動したら、Mr.Drop が勝手に動きます（黒い画面は出ません）。"
+    Say "パソコンを起動したら、Mr.Drop が勝手に出ます（黒い画面は出ません）。"
     Say "iPhone の Mr.Drop アプリから、そのまま送ってください。"
     Write-Host ""
-    Say "🔵 展開したこのフォルダは、もう消して構いません。"
+    Say "🔵 タスクバーの右下に Mr.Drop のアイコンが出ています。"
+    Say "   右クリックで 保存先を開く / 保存先を変える / 取扱説明書 /"
+    Say "   Windows 起動時に自動で開始 / アンインストール / 終了。"
     Write-Host ""
-    Say "この先の入口は「スタートメニュー > Mr.Drop」です。"
-    Say "  保存先を変える / 保存先を開く / 取扱説明書 / Mr.Drop をアンインストール"
+    Say "🔵 展開したこのフォルダは、もう消して構いません。"
   } else {
     Fail "常駐にできませんでした。上の出力を見てください。"
   }
@@ -253,8 +265,9 @@ if ($MakeResident) {
 if ($Uninstall) {
   Head "Mr.Drop をアンインストールします"
   Say "この PC から、Mr.Drop が入れたものを全部外します。"
-  Say "  ・自動起動（パソコンを起動しても、もう動きません）"
+  Say "  ・自動起動（パソコンを起動しても、もう出ません）"
   Say "  ・ファイアウォールに開けた穴"
+  Say "  ・タスクバーの常駐アイコン"
   Say "  ・スタートメニューの Mr.Drop"
   Say "  ・入れたプログラムと設定と記録（$AppDir）"
   Write-Host ""
@@ -267,7 +280,7 @@ if ($Uninstall) {
     "   もう一度やり直して、「はい」を選んでください。")
 
   Write-Host ""
-  if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+  if ((Get-ItemProperty -Path $RunKey -Name $RunName -ErrorAction SilentlyContinue).$RunName) {
     Fail "自動起動がまだ残っています。上の出力を見てください。"
   }
   Head "やめました"
