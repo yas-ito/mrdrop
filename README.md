@@ -225,7 +225,7 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 | `.local` で開けない | 代わりに IP（`http://192.168.…`）で開く |
 | アプリが PC を見つけない | `node server/mrdrop.js --browse` で PC 自身が見つけられるか確かめる。<br>見つかるならアプリ側（`Info.plist` の `NSBonjourServices`）を疑う |
 | 大きい動画が途中で止まる | 半端なファイルは保存先に出さない作りです。もう一度送ってください |
-| 動いているか分からない | **タスクバー右下のアイコン**。無ければ動いていません |
+| 動いているか分からない | **タスクバー右下のアイコン**。🔴 **Windows 11 は新しいアイコンを既定で「∧」の中に隠す**ので、まず ∧ を開くこと。それでも無ければ動いていません |
 | 自動起動しているか分からない | `%LOCALAPPDATA%\MrDrop\app\scripts\install-windows.ps1 -Status` |
 | やめたい | アイコンを右クリック > Mr.Drop をアンインストール（または `アンインストール.bat`） |
 | Mac で「開発元を確認できない」と出る | 公証していない版。`make-mac-app.sh` を `--no-notarize` なしで作り直す |

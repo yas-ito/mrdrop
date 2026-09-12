@@ -341,7 +341,15 @@ if ($up) {
   Write-Host "  設定は済みましたが、まだ動いていません。" -ForegroundColor Yellow
 }
 Write-Host ""
-Write-Host "  🔵 タスクバーの右下に Mr.Drop のアイコンが出ています。" -ForegroundColor Green
+# 🔴 Windows 11 は、新しく出たトレイアイコンを**既定で「∧」の中に隠す**。
+#    「右下に出ています」とだけ言うと、押した人は「何も出ない＝動いていない」と思う
+#    （タスクスケジューラをやめた理由と同じ失敗）。居場所と、出し方まで書くこと。
+#    ※ レジストリの IsPromoted=1 は、あとから書いても効かない（26200 で確認済み）。
+#      隠れているアイコンからの吹き出しも Windows が出さない。だからここで文字で伝える。
+Write-Host "  🔵 タスクバーの右下に Mr.Drop のアイコン（青い雫）が出ています。" -ForegroundColor Green
+Write-Host "     見当たらないときは「∧」を押してください。Windows 11 は新しいアイコンを"
+Write-Host "     最初は隠します。雫をドラッグしてタスクバーへ出しておくと、"
+Write-Host "     動いているかがひと目で分かります。"
 Write-Host "     右クリックで「保存先を変える」「アンインストール」ができます。"
 Write-Host ""
 Write-Host "  🔵 展開したフォルダは、もう消して構いません。" -ForegroundColor Green
