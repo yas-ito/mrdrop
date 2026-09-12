@@ -62,6 +62,16 @@ module.exports = async function (t) {
     eq(r3.status, 200, "危ない名前でも 200（弾かず、安全な名前に直す）");
     ok(fs.existsSync(path.join(cfg.inbox, "nasty.txt")), "保存先の中に落ちる");
     ok(!fs.existsSync(path.join(base, "nasty.txt")), "🔴 保存先の外には絶対に出さない");
+
+    // 🔴 保存先に見慣れないフォルダを残さない（本人が発見 2026-09-12）。
+    //    先頭のドットは Windows では何も隠さないので、ダウンロードフォルダに
+    //    空の .mrdrop-part が1つ増えて見えていた。
+    //    「専用のフォルダを勝手に作らない」と決めた以上、ここも残してはいけない。
+    ok(!fs.existsSync(path.join(cfg.inbox, PART_DIR)),
+       "🔴 転送が終わったら、書きかけの置き場は残らない");
+    eq(fs.readdirSync(cfg.inbox).sort().join(","),
+       ["写真.jpg", "写真 (2).jpg", "nasty.txt"].sort().join(","),
+       "🔴 保存先に増えるのは届いたファイルだけ");
   });
 
   await suite("途中で切れたものは出さない", async () => {

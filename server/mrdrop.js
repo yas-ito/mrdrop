@@ -94,6 +94,14 @@ async function main() {
   fs.mkdirSync(cfg.inbox, { recursive: true });
   fs.mkdirSync(cfg.outbox, { recursive: true });
 
+  // 🔴 前に落ちたときの作業用フォルダが残っていることがある。空なら消す。
+  //    保存先に見慣れないフォルダが1つ増えているのは、それだけで不安の元（本人が発見）。
+  //    書きかけの .part は残っていても捨ててよい（途中のものは再開しない作りなので）。
+  try {
+    const part = path.join(cfg.inbox, ".mrdrop-part");
+    if (fs.existsSync(part)) fs.rmSync(part, { recursive: true, force: true });
+  } catch { /* 消せなくても動かす */ }
+
   const server = createServer(cfg, log);
   await new Promise((resolve, reject) => {
     server.once("error", reject);

@@ -8,10 +8,19 @@ const fsp = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
 const { pipeline } = require("stream/promises");
+const { execFile } = require("child_process");
 const { safeName, uniqueName, humanSize } = require("./names");
 const { page } = require("./ui");
 
-const PART_DIR = ".mrdrop-part";      // 書きかけの置き場（保存先の中に隠す）
+// 書きかけの置き場。保存先と同じドライブに置くので、出来上がりを**移動ではなくリンク**で
+// 済ませられる（数GBの動画を二度書きしない）。
+//
+// 🔴 先頭のドットは Windows では何も隠さない。Mac では見えないので気づけないが、
+//    Windows の人の「ダウンロード」に空のフォルダが1つ増えて見える（本人が発見 2026-09-12）。
+//    「専用のフォルダを勝手に作らない」と決めた以上、ここも残してはいけない。
+//    ・作るときに隠し属性を付ける（Windows）
+//    ・空になったら消す。ふだんは存在しない
+const PART_DIR = ".mrdrop-part";
 
 // LAN の外からは相手にしない。ルータの穴あけ事故で世界に晒される事態を防ぐ。
 function isLocalAddress(ip) {
@@ -44,6 +53,27 @@ const text = (res, code, s) => {
 // 書きかけを本名に変える。
 // 🔴 rename は Windows では既存を黙って上書きする。link なら相手がいると EEXIST で
 //    失敗してくれるので、これを衝突検出そのものに使う（同時に2枚届いても潰れない）。
+// 作業用フォルダを用意する。**新しく作ったときだけ** Windows の隠し属性を付ける。
+// 🔴 attrib は出来なくても構わない（見た目の問題で、動きには関わらない）。待たない。
+async function ensurePartDir(partDir) {
+  let made = false;
+  try {
+    await fsp.mkdir(partDir);
+    made = true;
+  } catch (e) {
+    if (e.code !== "EEXIST") throw e;
+  }
+  if (made && process.platform === "win32") {
+    try { execFile("attrib", ["+h", partDir], () => {}); } catch { /* 見た目だけの話 */ }
+  }
+}
+
+// 空なら消す。転送が終わるたびに呼ぶので、ふだんは存在しない状態になる。
+// 🔴 同時に別の転送が走っていれば中身があり、rmdir は ENOTEMPTY で失敗する。それでいい。
+async function tidyPartDir(partDir) {
+  try { await fsp.rmdir(partDir); } catch { /* まだ使っている・もう無い */ }
+}
+
 async function commit(tmp, dir, wanted) {
   let candidate = uniqueName(wanted, (n) => fs.existsSync(path.join(dir, n)));
   const ext = path.extname(wanted);
@@ -142,7 +172,7 @@ function createServer(cfg, log = console.log) {
       // ── 受け取る（iPhone → PC） ──
       if (req.method === "PUT" && url.pathname.startsWith("/put/")) {
         const wanted = safeName(decodeURIComponent(url.pathname.slice(5)));
-        await fsp.mkdir(partDir, { recursive: true });
+        await ensurePartDir(partDir);
         const tmp = path.join(partDir, crypto.randomBytes(8).toString("hex") + ".part");
         const started = Date.now();
         try {
@@ -150,6 +180,7 @@ function createServer(cfg, log = console.log) {
         } catch (e) {
           // 🔴 途中で切れたものは絶対に保存先へ出さない。半端なファイルは事故のもと。
           await fsp.rm(tmp, { force: true });
+          await tidyPartDir(partDir);
           log(`⚠️ 途中で切れました: ${wanted}（${e.code || e.message}）`);
           return text(res, 400, "途中で切れました");
         }
@@ -157,10 +188,12 @@ function createServer(cfg, log = console.log) {
         const declared = req.headers["content-length"] ? Number(req.headers["content-length"]) : null;
         if (declared !== null && Number.isFinite(declared) && st.size !== declared) {
           await fsp.rm(tmp, { force: true });
+          await tidyPartDir(partDir);
           log(`⚠️ 大きさが合いません: ${wanted}（${st.size} / ${declared}）`);
           return text(res, 400, "大きさが合いません");
         }
         const saved = await commit(tmp, inbox, wanted);
+        await tidyPartDir(partDir);
         const mod = Number(req.headers["x-mrdrop-modified"]);
         if (Number.isFinite(mod) && mod > 0) {
           try { await fsp.utimes(path.join(inbox, saved), new Date(mod), new Date(mod)); } catch { /* 出来なくても構わない */ }
