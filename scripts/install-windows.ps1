@@ -299,7 +299,7 @@ New-Item -ItemType Directory -Path $MenuDir -Force | Out-Null
 Get-ChildItem -LiteralPath $MenuDir -Filter *.lnk -ErrorAction SilentlyContinue | Remove-Item -Force
 New-Shortcut (Join-Path $MenuDir "保存先を変える.lnk")   $ps "$common -ChooseInbox -Pause" $AppRoot "iPhone から届いたものを入れるフォルダを選ぶ"
 New-Shortcut (Join-Path $MenuDir "保存先を開く.lnk")     $ps "$common -OpenInbox"          $AppRoot "届いたものが入るフォルダを開く"
-New-Shortcut (Join-Path $MenuDir "Mr.Drop をやめる.lnk") $ps "$common -Uninstall -Pause"   $AppRoot "Mr.Drop を入れる前に戻す（届いたファイルは残ります）"
+New-Shortcut (Join-Path $MenuDir "Mr.Drop をアンインストール.lnk") $ps "$common -Uninstall -Pause" $AppRoot "Mr.Drop をこの PC から外す（届いたファイルは残ります）"
 $manual = Join-Path $AppRoot "取扱説明書.html"
 if (Test-Path -LiteralPath $manual) {
   New-Shortcut (Join-Path $MenuDir "取扱説明書.lnk") $manual $null $AppRoot "Mr.Drop の取扱説明書"
@@ -330,5 +330,5 @@ Write-Host "  🔵 展開したフォルダは、もう消して構いません�
 Write-Host "     この PC の中（$AppRoot）へ写してあります。"
 Write-Host ""
 Write-Host "  保存先を変える : スタートメニュー > Mr.Drop > 保存先を変える"
-Write-Host "  やめる         : スタートメニュー > Mr.Drop > Mr.Drop をやめる"
+Write-Host "  外したいとき   : スタートメニュー > Mr.Drop > Mr.Drop をアンインストール"
 Write-Host ""

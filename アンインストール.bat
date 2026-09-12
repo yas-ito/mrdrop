@@ -1,6 +1,6 @@
 @echo off
 rem ---------------------------------------------------------------
-rem  Mr.Drop - remove it from this PC.
+rem  Mr.Drop - uninstall (remove it from this PC).
 rem
 rem  Double-click this file. It stops Mr.Drop, closes the firewall
 rem  hole, removes the auto-start and deletes what was installed.
