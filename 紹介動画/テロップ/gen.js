@@ -54,7 +54,7 @@ const T = {
   s1_kashitsu:  bottom(line(`ケーブル <span class="x">✕</span>　クラウド <span class="x">✕</span>　チャット <span class="x">✕</span>`) +
                        line("チャットに送ると画質が落ちる", "small")),
   // S2
-  s2_direct:    bottom(line("同じ Wi-Fi の中で、直接") + line("インターネットを通らない")),
+  s2_direct:    bottom(line("同じ Wi-Fi の中で、直接") + line("インターネットに出ない")),
   // S3
   s3_step1:     bottom(line(`<span class="num"><span class="n">1</span>アプリを開く → PC が自動で出る</span>`)),
   s3_step2:     bottom(line(`<span class="num"><span class="n">2</span>「写真・動画を送る」から選ぶだけ</span>`) +

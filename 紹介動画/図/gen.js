@@ -111,7 +111,7 @@ const title = page(`<div class="wrap">
  ${logo("iPhone → パソコン ファイル転送")}
  <div class="mid">
   <h1>iPhone のデータを、<br>Windows に送れる。</h1>
-  <div class="lead" style="margin-top:40px;">同じ Wi-Fi の中で、そのまま。インターネットを通りません。</div>
+  <div class="lead" style="margin-top:40px;">同じ Wi-Fi の中で、そのまま。インターネットに出ません。</div>
  </div>
  <div class="row above-telop" style="gap:20px;">
   <div class="chip">Windows 10 / 11</div><div class="chip">macOS 13 以降</div>
@@ -130,7 +130,7 @@ const direct = page(`<div class="wrap">
   </div>
   <div class="row center" style="margin-top:56px;gap:30px;">
    ${cloudX(210)}
-   <div style="font-size:38px;font-weight:700;">インターネットを通りません</div>
+   <div style="font-size:38px;font-weight:700;">インターネットに出ません</div>
   </div>
  </div>
 </div>`);
