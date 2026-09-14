@@ -168,7 +168,7 @@
       <li><strong>インターネットを通りません。</strong>端末どうしが直接やりとりします。写真がどこかのサーバーに残ることはありません</li>
       <li><strong>初期設定では、写真は JPEG で届きます。</strong>Windows でそのまま開けるようにするためです。動画は MP4 に詰め替えるだけで、画質は変わりません。撮ったままの形式（HEIC・MOV）が良いときは、iPhone アプリの「送る形式」を切ってください</li>
       <li><strong>iPhone アプリが App Store で無料です。</strong>写真アプリの共有ボタンから、そのまま送れます</li>
-      <li><strong>PC → iPhone もできます。</strong>PC の「送信箱」に入れたものを、<strong>iPhone のブラウザ</strong>（Safari / Chrome）から受け取れます。iPhone アプリには、まだ受け取る機能がありません</li>
+      <li><strong>PC → iPhone もできます。</strong>PC の「送信箱」に入れたものを、<strong>iPhone アプリの「受け取る」</strong>から受け取れます（アプリ 1.1.0 以降）。アプリを入れていないときは <strong>iPhone のブラウザ</strong>（Safari / Chrome）からでも受け取れます</li>
     </ul>
     <div class="hint">追加のソフトは何も入りません。この道具は外部の部品（npm パッケージ）を1つも使っていないので、
       入るのは <code>server</code> フォルダの中の数個のファイルだけです。</div>
@@ -293,10 +293,22 @@
     <div class="caution">
       <div class="caution-title">⚠ こちらは iPhone から取りに行く作りです</div>
       <p><strong>送信箱に入れても、iPhone にもパソコンにも通知は出ません。</strong>
-         iPhone から見に行ったときに、一覧に出ます。<br>
-         また、<strong>iPhone アプリには、まだ受け取る機能がありません。</strong>
-         受け取りは iPhone の<strong>ブラウザ</strong>（Safari でも Chrome でも構いません）で行います。</p>
+         iPhone から見に行ったときに、一覧に出ます。
+         （アプリが閉じているあいだ、iOS は Wi-Fi を見張らせてくれないためです）</p>
     </div>
+
+    <h3>&nbsp;&nbsp;① iPhone アプリで受け取る（おすすめ）</h3>
+    <ol>
+      <li>iPhone で <strong>Mr.Drop</strong> アプリを開き、下の「<strong>受け取る</strong>」を押します</li>
+      <li>送信箱の中身が一覧で出ます。「<strong>すべて受け取る</strong>」を押します</li>
+      <li>写真と動画は「<strong>写真</strong>」アプリへ、それ以外は「<strong>ファイル</strong>」アプリの
+          <strong>Mr.Drop › 受信</strong> へ入ります</li>
+    </ol>
+    <div class="hint">受け取ったものには印が付くので、<strong>同じものを二度受け取ることはありません</strong>。
+      受け取っても<strong>送信箱のファイルは消えません</strong>（置いた人の物を勝手に消さないためです）。<br>
+      ※ この受け取り機能は <strong>iPhone アプリ 1.1.0 以降</strong>です。App Store で更新してください。</div>
+
+    <h3>&nbsp;&nbsp;② ブラウザで受け取る（アプリを入れていないとき）</h3>
     <ol>
       <li>iPhone のブラウザで <code>http://＜PC名＞.local:48630</code> を開きます。
           この住所は、タスクバーの Mr.Drop のアイコンにマウスを乗せると出ます</li>
@@ -312,7 +324,6 @@
       「ホーム画面に追加」しておくと、次からはアイコンを押すだけで全画面で開きます。ふつうのアプリとほとんど同じ使い勝手になります。<br>
       登録するときは、なるべく <code>＜PC名＞.local</code> の方をお使いください。<code>192.168…</code> の番号は、
       パソコンやルーターを再起動すると変わることがあり、そうなるとアイコンから開けなくなります。</div>
-    <div class="hint">※ ブラウザを開かずに、iPhone アプリの中だけで受け取れるようにアップデートを予定しています。</div>
 
     <h3>大きい動画を送るとき</h3>
     <ul>
