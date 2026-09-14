@@ -85,7 +85,7 @@ struct ReceiveView: View {
                 Text("PC の送信箱")
                 Spacer()
                 if !fresh.isEmpty, let p = peer {
-                    Button("まだの \(fresh.count) 件を受け取る") { downloader.fetchAll(fresh, from: p) }
+                    Button(fetchAllLabel) { downloader.fetchAll(fresh, from: p) }
                         .font(.caption)
                 }
             }
@@ -97,6 +97,16 @@ struct ReceiveView: View {
                      + "通知は出ないので、届いたかどうかはこの画面を開いて確かめてください。")
             }
         }
+    }
+
+    /// まとめて受け取るボタンの文字。
+    /// 🔴 「まだの◯件」は日本語として不自然（本人指摘 2026-09-14）。
+    ///    全部まだなら「すべて」、一部だけ残っているなら「残りの」と言い分ける。
+    ///    ⚠️ 一部だけ残っているときに「すべて」と書くと、済んだ分も落とし直すように読めるので嘘になる。
+    private var fetchAllLabel: String {
+        fresh.count == downloader.files.count
+            ? "\(fresh.count) 件すべて受け取る"
+            : "残りの \(fresh.count) 件を受け取る"
     }
 
     /// 空っぽのときの案内。**「空です」だけで終わらせない。**
