@@ -206,7 +206,12 @@ struct ContentView: View {
 
     /// `.mov` を **作り直さずに** `.mp4` へ詰め替える（パススルー）。画質は変わらず、数秒で終わる。
     /// 🔴 共有拡張ではやらない。メモリ 120MB の中で走らせると落ちる。
-    private func remuxToMP4(_ url: URL) async -> URL? {
+    ///
+    /// 🔴 詰め替えると**中の作成日時が「変換した時刻」に化ける**（2026-09-14 に測った）。
+    ///    消えるより悪い。もっともらしい嘘の日付が入るので、誰も間違いに気づけない。
+    ///    「送る形式」を切にしたときだけ日付が残る、という食い違いになっていた。
+    /// 🔴 だから日付は**呼ぶ側が詰め替える前に読んで**、ここへ渡す。あとから読んでは手遅れ。
+    private func remuxToMP4(_ url: URL, taken: Date?) async -> URL? {
         guard url.pathExtension.lowercased() != "mp4" else { return url }
         let asset = AVURLAsset(url: url)
         guard let ex = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
@@ -217,6 +222,7 @@ struct ContentView: View {
         try? FileManager.default.removeItem(at: out)
         ex.outputURL = out
         ex.outputFileType = .mp4
+        if let taken { ex.metadata = FileDate.creationMetadata(taken) }   // 🔴 これが無いと日付が消える
         let started = Date()
         await withCheckedContinuation { cont in
             ex.exportAsynchronously { cont.resume() }
@@ -228,6 +234,12 @@ struct ContentView: View {
             return nil
         }
         MrDrop.log("変換", "mp4 へ詰め替え \(String(format: "%.1f", -started.timeIntervalSinceNow))秒")
+        if let taken {
+            // 🔴 札だけでは足りない。ヘッダには書き出した時刻が入るので、そこも直す
+            //    （Windows の「メディアの作成日」や編集ソフトはヘッダを見る）。
+            FileDate.patchContainerDate(out, to: taken)
+        }
+        FileDate.apply(taken, to: out)                   // 外側の日付もそろえておく
         try? FileManager.default.removeItem(at: url)     // 元は要らない
         return out
     }
@@ -268,13 +280,15 @@ struct ContentView: View {
                 }
                 do {
                     if var f = try outcome.get() {
-                        if convertForPC, isMovie, let mp4 = await remuxToMP4(f.url) {
+                        // 🔴 日付は**詰め替える前に**読む。詰め替えで消えるため。
+                        let taken = await FileDate.best(of: f.url)
+                        if convertForPC, isMovie, let mp4 = await remuxToMP4(f.url, taken: taken) {
                             f = (url: mp4, name: (f.name as NSString).deletingPathExtension + ".mp4")
                         }
                         uploader.endStaging(ticket)
                         let size = (try? FileManager.default.attributesOfItem(atPath: f.url.path)[.size] as? Int64) ?? nil
-                        MrDrop.log("アプリ", "取り込み成功 \(f.name) \(size ?? -1) バイト")
-                        uploader.send(fileURL: f.url, filename: f.name, to: p, modified: nil, whileWatching: true)
+                        MrDrop.log("アプリ", "取り込み成功 \(f.name) \(size ?? -1) バイト 日付=\(taken.map { ISO8601DateFormatter().string(from: $0) } ?? "不明")")
+                        uploader.send(fileURL: f.url, filename: f.name, to: p, modified: taken, whileWatching: true)
                     } else {
                         MrDrop.log("アプリ", "🔴 取り込み: iOS が nil を返した")
                         uploader.failStaging(ticket, "iOS がこの項目を渡してくれませんでした")
@@ -296,10 +310,17 @@ struct ContentView: View {
             let needsStop = u.startAccessingSecurityScopedResource()
             defer { if needsStop { u.stopAccessingSecurityScopedResource() } }
             do {
+                // 🔴 元の日付は**写す前**に、許可が開いているうちに読む。
+                //    書類や PDF は中に日付を持たないので、ここが唯一の手がかりになる。
+                let onDisk = FileDate.fileDate(of: u)
                 let dir = try MrDrop.stagingDirectory()
                 let dest = dir.appendingPathComponent(UUID().uuidString + "-" + u.lastPathComponent)
                 try FileManager.default.copyItem(at: u, to: dest)
-                uploader.send(fileURL: dest, filename: u.lastPathComponent, to: p, modified: nil, whileWatching: true)
+                let name = u.lastPathComponent
+                Task {
+                    let taken = await FileDate.embedded(in: dest) ?? onDisk
+                    uploader.send(fileURL: dest, filename: name, to: p, modified: taken, whileWatching: true)
+                }
             } catch {
                 message = error.localizedDescription
             }

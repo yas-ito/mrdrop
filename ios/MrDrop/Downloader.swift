@@ -171,7 +171,11 @@ final class Downloader: NSObject, ObservableObject {
     /// 写真アプリへ入れる。
     /// 🔴 `shouldMoveFile = true` にする。コピーだと数GBの動画で空き容量を二重に食う。
     /// 🔴 許可は `.addOnly`（入れるだけ）。写真を読む許可は要らないし、求めるべきでもない。
-    private func saveToPhotos(_ url: URL, name: String, kind: MrDrop.PhotoKind) async throws {
+    ///
+    /// - Parameter when: 中に日付が**書いていないとき**だけ渡す。
+    ///   🔴 EXIF や動画のメタデータがあるなら、写真アプリはそちらから正しく読む。
+    ///      こちらから `creationDate` を入れると、その正しい日付を上書きしてしまう。
+    private func saveToPhotos(_ url: URL, name: String, kind: MrDrop.PhotoKind, when: Date?) async throws {
         let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
         guard status == .authorized || status == .limited else {
             throw NSError(domain: "MrDrop", code: 3, userInfo: [NSLocalizedDescriptionKey:
@@ -179,6 +183,7 @@ final class Downloader: NSObject, ObservableObject {
         }
         try await PHPhotoLibrary.shared().performChanges {
             let req = PHAssetCreationRequest.forAsset()
+            if let when { req.creationDate = when }
             let opts = PHAssetResourceCreationOptions()
             opts.originalFilename = name
             opts.shouldMoveFile = true
@@ -187,30 +192,36 @@ final class Downloader: NSObject, ObservableObject {
     }
 
     /// ファイルアプリへ置く。上書きはしない（`名前 (2)` にする）。
-    private func saveToFiles(_ url: URL, name: String) throws -> String {
+    private func saveToFiles(_ url: URL, name: String, when: Date?) throws -> String {
         let dir = try MrDrop.receivedDirectory()
         let fm = FileManager.default
         let final = MrDrop.uniqueName(name) { fm.fileExists(atPath: dir.appendingPathComponent($0).path) }
-        try fm.moveItem(at: url, to: dir.appendingPathComponent(final))
+        let dest = dir.appendingPathComponent(final)
+        try fm.moveItem(at: url, to: dest)
+        FileDate.apply(when, to: dest)          // PC にあったときの日付に戻す
         return final
     }
 
-    private func finish(_ id: Int, file: MrDrop.RemoteFile, staged: URL, seconds: Double) async {
+    private func finish(_ id: Int, file: MrDrop.RemoteFile, staged: URL, seconds: Double, when: Date?) async {
         update(id) { $0.saving = true }
 
         let kind = MrDrop.receiveIntoPhotos ? MrDrop.photoKind(for: file.name) : nil
         var destination: Destination?
         var failure: String?
 
+        // 🔴 中に日付が書いてあるなら、写真アプリにはそちらを読ませる（そのほうが正確）。
+        //    書いていないものにだけ、PC で持っていた日付を付ける。
+        let forPhotos = (await FileDate.embedded(in: staged)) == nil ? when : nil
+
         if let kind {
             do {
-                try await saveToPhotos(staged, name: file.name, kind: kind)
+                try await saveToPhotos(staged, name: file.name, kind: kind, when: forPhotos)
                 destination = .photos
             } catch {
                 // 🔴 写真アプリに入らなかったら、黙って捨てない。ファイルアプリへ回す。
                 //    ここで捨てると「受け取れたのに、どこにも無い」になる。
                 MrDrop.log("受信", "⚠️ 写真アプリに入らず、ファイルアプリへ回します: \(MrDrop.describe(error))")
-                if let saved = try? saveToFiles(staged, name: file.name) {
+                if let saved = try? saveToFiles(staged, name: file.name, when: when) {
                     destination = .files(saved, fallback: true)
                 } else {
                     failure = MrDrop.describe(error)
@@ -218,7 +229,7 @@ final class Downloader: NSObject, ObservableObject {
             }
         } else {
             do {
-                destination = .files(try saveToFiles(staged, name: file.name), fallback: false)
+                destination = .files(try saveToFiles(staged, name: file.name, when: when), fallback: false)
             } catch {
                 failure = MrDrop.describe(error)
             }
@@ -314,9 +325,16 @@ extension Downloader: URLSessionDownloadDelegate {
             return
         }
 
+        // 🔴 PC にあったときの日付。応答のヘッダが本命で、無ければ一覧の値を使う
+        //    （一覧を取ってから落とすまでに差し替わっていることがあるので、ヘッダを先に見る）。
+        let head = (downloadTask.response as? HTTPURLResponse)?
+            .value(forHTTPHeaderField: "X-MrDrop-Modified")
+            .flatMap(Double.init)
+        let when = head.map { Date(timeIntervalSince1970: $0 / 1000) } ?? info.file.modified
+
         let seconds = -info.started.timeIntervalSinceNow
         Task { @MainActor in
-            await self.finish(id, file: info.file, staged: staged, seconds: seconds)
+            await self.finish(id, file: info.file, staged: staged, seconds: seconds, when: when)
         }
     }
 

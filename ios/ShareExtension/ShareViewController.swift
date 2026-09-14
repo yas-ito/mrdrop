@@ -68,7 +68,10 @@ final class ShareViewController: UIViewController {
             for provider in item.attachments ?? [] {
                 MrDrop.log("拡張", "受け取れる型=\(provider.registeredTypeIdentifiers.joined(separator: ",")) → 選んだ型=\(originalType(of: provider))")
                 guard let picked = await copyToStaging(provider) else { continue }
-                if uploader.send(fileURL: picked.file, filename: picked.name, to: peer, modified: nil) {
+                // 🔴 撮影日時は中（EXIF・動画のメタデータ）から読む。ここで渡さないと、
+                //    PC に着いたファイルの日付が「送った日」になる。
+                let taken = await FileDate.best(of: picked.file)
+                if uploader.send(fileURL: picked.file, filename: picked.name, to: peer, modified: taken) {
                     count += 1
                 }
             }

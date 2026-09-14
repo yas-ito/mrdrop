@@ -12,8 +12,11 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "1.1.0"
-    CURRENT_PROJECT_VERSION: "3"
+    # 🔴 1.1.0 (3) は審査に出してある版です。**同じ版数で中身の違う物を上げないため**、
+    #    日付の引き継ぎを入れた時点で 1.2.0 (4) に上げました（2026-09-14）。
+    #    1.1.0 を出し直す用事ができたら、ここを 1.1.0 / 4 に戻してから作ってください。
+    MARKETING_VERSION: "1.2.0"
+    CURRENT_PROJECT_VERSION: "4"
     SWIFT_VERSION: "5.0"
     # 署名は Xcode に任せる（Automatic）。Team は本人のもの。
     # App Store に出す・実機に入れるのに要る。シミュレータだけなら無くても動く

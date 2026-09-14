@@ -96,6 +96,31 @@ async function commit(tmp, dir, wanted) {
   throw new Error("同じ名前が多すぎる");
 }
 
+// 保存したファイルに「元の日付」を付け直す。付けられたらその Date、付けなかったら null。
+//
+// 🔴 ありえない値は黙って捨てる。壊れた EXIF は 0 や 1601 年を寄こすことがあり、
+//    そのまま入れるとエクスプローラの並びが壊れる。
+// 🔴 失敗しても転送は成功のまま。日付が付かないことより、ファイルを失う方がずっと悪い。
+const OLDEST = Date.UTC(1990, 0, 1);
+
+async function stampModified(full, header) {
+  const ms = Number(header);
+  if (!Number.isFinite(ms) || ms < OLDEST) return null;
+  if (ms > Date.now() + 2 * 86400 * 1000) return null;   // 時差のずれ幅より広く取る
+  const when = new Date(ms);
+  try {
+    const st = await fsp.stat(full);
+    // 🔴 「作成日時」の行き先は OS で違う（2026-09-14 に実測。`test/http.test.js` で固定）。
+    //    ・Windows(NTFS) … ここで変わるのは更新日時だけ。作成日時は届いた時刻のまま残る
+    //    ・Mac(APFS)     … 作成日時は更新日時より後になれないので、**一緒に引きずられる**
+    //    どちらでも「届いた順」は分かる（Mac の Finder は別に「追加日」を持っている）。
+    await fsp.utimes(full, st.atime, when);
+    return when;
+  } catch {
+    return null;                                          // 読み取り専用の置き場など。構わない
+  }
+}
+
 async function listDir(dir) {
   let names;
   try { names = await fsp.readdir(dir); } catch { return []; }
@@ -165,6 +190,11 @@ function createServer(cfg, log = console.log) {
           "content-type": "application/octet-stream",
           "content-length": st.size,
           "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+          // 🔴 このファイルの日付も一緒に渡す。受け取った iPhone 側で付け直すため
+          //    （付けないと、届いた物が全部「いま」になる）。
+          //    last-modified は秒までしか表せないので、ミリ秒は自前の欄で送る。
+          "last-modified": new Date(st.mtimeMs).toUTCString(),
+          "x-mrdrop-modified": String(Math.round(st.mtimeMs)),
         });
         return pipeline(fs.createReadStream(full), res).catch(() => {});
       }
@@ -194,13 +224,13 @@ function createServer(cfg, log = console.log) {
         }
         const saved = await commit(tmp, inbox, wanted);
         await tidyPartDir(partDir);
-        const mod = Number(req.headers["x-mrdrop-modified"]);
-        if (Number.isFinite(mod) && mod > 0) {
-          try { await fsp.utimes(path.join(inbox, saved), new Date(mod), new Date(mod)); } catch { /* 出来なくても構わない */ }
-        }
+        // 🔴 届いたファイルの更新日時を、送り主が言う「元の日付」にそろえる。
+        //    これが無いと、撮影日時を中に持たない書類や PDF は日付が分からなくなる。
+        const stamped = await stampModified(path.join(inbox, saved), req.headers["x-mrdrop-modified"]);
         const secs = (Date.now() - started) / 1000;
         const speed = secs > 0.2 ? `・${humanSize(st.size / secs)}/秒` : "";
-        log(`📥 ${saved}  ${humanSize(st.size)}${speed}  ← ${String(remote).replace("::ffff:", "")}`);
+        const dated = stamped ? `・日付 ${stamped.toLocaleString()}` : "";
+        log(`📥 ${saved}  ${humanSize(st.size)}${speed}${dated}  ← ${String(remote).replace("::ffff:", "")}`);
         return json(res, 200, { ok: true, saved, size: st.size });
       }
 

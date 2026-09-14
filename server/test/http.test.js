@@ -112,6 +112,69 @@ module.exports = async function (t) {
     ok(bad.status === 404 || bad.status === 400, "🔴 送信箱の外は読ませない");
   });
 
+  await suite("日付を引き継ぐ", async () => {
+    // 🔴 撮った日ではなく「届いた日」が付くと、書類や PDF は元がいつの物か分からなくなる。
+    //    送り主が言う日付を、そのままファイルの更新日時にする。
+    const taken = Date.UTC(2019, 4, 3, 14, 25, 36);
+    const r = await req(port, "PUT", "/put/" + encodeURIComponent("旅行.jpg"), "PHOTO",
+                        { "x-mrdrop-modified": String(taken) });
+    eq(r.json && r.json.saved, "旅行.jpg", "保存できる");
+    eq(fs.statSync(path.join(cfg.inbox, "旅行.jpg")).mtimeMs, taken, "更新日時が撮った日になる");
+
+    // 🔴 「作成日時」の行き先は OS で違う（2026-09-14 に実測）。
+    //    ・Windows(NTFS) … 更新日時だけ変わる。作成日時は**届いた時刻のまま**
+    //    ・Mac(APFS)     … 作成日時は更新日時より後になれない決まりがあり、
+    //                      更新日時を過去に戻すと**作成日時も一緒に引きずられる**
+    //    どちらでも「届いた順」は分かる（Mac の Finder は別に「追加日」を持っている）ので
+    //    これでよい。だが**知らないと Mac で驚く**ので、ここに固定しておく。
+    const born = fs.statSync(path.join(cfg.inbox, "旅行.jpg")).birthtimeMs;
+    if (process.platform === "darwin") {
+      eq(born, taken, "Mac は作成日時も撮った日に引きずられる（APFS の決まり）");
+    } else {
+      ok(born === 0 || born > taken, "作成日時は届いた時刻のまま（撮った日にはしない）");
+    }
+
+    // 名前がぶつかって (2) になっても、日付は (2) の方に付く
+    const r2 = await req(port, "PUT", "/put/" + encodeURIComponent("旅行.jpg"), "PHOTO2",
+                         { "x-mrdrop-modified": String(taken) });
+    eq(r2.json && r2.json.saved, "旅行 (2).jpg", "同じ名前は (2) になる");
+    eq(fs.statSync(path.join(cfg.inbox, "旅行 (2).jpg")).mtimeMs, taken, "(2) の方に日付が付く");
+
+    // 🔴 ありえない値は捨てる。壊れた EXIF は 0 や 1601 年を寄こす
+    const now = Date.now();
+    for (const [bad, why] of [["0", "0"], ["-5", "負の数"], ["abc", "数でない"],
+                              [String(Date.UTC(1601, 0, 1)), "1601年"],
+                              [String(now + 400 * 86400000), "遠い未来"]]) {
+      const name = `変な日付-${encodeURIComponent(why)}.txt`;
+      const rr = await req(port, "PUT", "/put/" + name, "X", { "x-mrdrop-modified": bad });
+      eq(rr.status, 200, `${why} でも転送は成功する`);
+      const m = fs.statSync(path.join(cfg.inbox, rr.json.saved)).mtimeMs;
+      ok(Math.abs(m - now) < 60_000, `${why} は捨てて、いまの時刻のまま`);
+    }
+
+    // 日付を言わずに送ったときは、いまの時刻（これまでどおり）
+    const plain = await req(port, "PUT", "/put/日付なし.txt", "X");
+    ok(Math.abs(fs.statSync(path.join(cfg.inbox, plain.json.saved)).mtimeMs - now) < 60_000,
+       "日付を言わなければ、いまの時刻");
+  });
+
+  await suite("送信箱のファイルは日付つきで渡す", async () => {
+    // 🔴 iPhone 側はこれを見て、受け取ったファイルの日付を PC と同じに戻す。
+    const f = path.join(cfg.outbox, "写真.jpg");
+    fs.writeFileSync(f, "OUT");
+    const taken = Date.UTC(2021, 10, 7, 9, 1, 2);
+    fs.utimesSync(f, new Date(taken), new Date(taken));
+
+    const res = await fetch(`http://127.0.0.1:${port}/get/` + encodeURIComponent("写真.jpg"));
+    eq(await res.text(), "OUT", "中身は落とせる");
+    eq(res.headers.get("x-mrdrop-modified"), String(taken), "ミリ秒まで渡す");
+    eq(res.headers.get("last-modified"), new Date(taken).toUTCString(), "last-modified も付ける");
+
+    const list = await req(port, "GET", "/api/list");
+    const row = list.json.files.find((x) => x.name === "写真.jpg");
+    eq(row && row.mtime, taken, "一覧の日付も同じ");
+  });
+
   await suite("名乗りと道", async () => {
     const info = await req(port, "GET", "/api/info");
     eq(info.json.app, "mrdrop", "名乗る");
