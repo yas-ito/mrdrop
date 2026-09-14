@@ -168,7 +168,7 @@
       <li><strong>インターネットを通りません。</strong>端末どうしが直接やりとりします。写真がどこかのサーバーに残ることはありません</li>
       <li><strong>初期設定では、写真は JPEG で届きます。</strong>Windows でそのまま開けるようにするためです。動画は MP4 に詰め替えるだけで、画質は変わりません。撮ったままの形式（HEIC・MOV）が良いときは、iPhone アプリの「送る形式」を切ってください</li>
       <li><strong>iPhone アプリが App Store で無料です。</strong>写真アプリの共有ボタンから、そのまま送れます</li>
-      <li><strong>PC → iPhone もできます。</strong>PC の「送信箱」に入れたものを、iPhone から受け取れます</li>
+      <li><strong>PC → iPhone もできます。</strong>PC の「送信箱」に入れたものを、<strong>iPhone のブラウザ</strong>（Safari / Chrome）から受け取れます。iPhone アプリには、まだ受け取る機能がありません</li>
     </ul>
     <div class="hint">追加のソフトは何も入りません。この道具は外部の部品（npm パッケージ）を1つも使っていないので、
       入るのは <code>server</code> フォルダの中の数個のファイルだけです。</div>
@@ -285,11 +285,34 @@
       <p><strong>選んだ瞬間に送り始めます。</strong>「送信」ボタンを探す必要はありません。
          棒グラフが伸びて「送りました」に変われば完了です。何度も選び直すと、同じ写真が何枚も届きます。</p>
     </div>
-    <p>届いたものは PC の<strong>保存先</strong>（初期設定ではデスクトップの「保存先」フォルダ）に入ります。</p>
+    <p>届いたものは PC の<strong>保存先</strong>に入ります。初期設定は <code>C:UsersあなたDownloads</code>、
+       つまり<strong>いつもの「ダウンロード」フォルダそのもの</strong>です。専用のフォルダは作りません。</p>
 
     <h3>PC → iPhone（受け取る）</h3>
-    <p>PC の<strong>送信箱</strong>フォルダに入れたファイルが、iPhone の画面の下の方に一覧で出ます。
-       「受け取る」を押すと iPhone に落ちます。</p>
+    <p>デスクトップの<strong>「Mr.Drop送信箱」</strong>フォルダに入れたファイルを、iPhone から受け取れます。</p>
+    <div class="caution">
+      <div class="caution-title">⚠ こちらは iPhone から取りに行く作りです</div>
+      <p><strong>送信箱に入れても、iPhone にもパソコンにも通知は出ません。</strong>
+         iPhone から見に行ったときに、一覧に出ます。<br>
+         また、<strong>iPhone アプリには、まだ受け取る機能がありません。</strong>
+         受け取りは iPhone の<strong>ブラウザ</strong>（Safari でも Chrome でも構いません）で行います。</p>
+    </div>
+    <ol>
+      <li>iPhone のブラウザで <code>http://＜PC名＞.local:48630</code> を開きます。
+          この住所は、タスクバーの Mr.Drop のアイコンにマウスを乗せると出ます</li>
+      <li>初回は「ローカルネットワーク上のデバイスへのアクセスを許可しますか」と聞かれるので「許可」を押します。
+          <strong>これはアプリごとに聞かれます。</strong>Mr.Drop アプリで許可済みでも、Safari や Chrome では改めて聞かれます</li>
+      <li>画面を下へスクロールすると「<strong>この PC から受け取る</strong>」の欄に、送信箱の中身が一覧で出ます</li>
+      <li>「受け取る」を押すと iPhone に落ちます。保存先はブラウザによって違います<br>
+          Safari … 「ファイル」アプリ →「ダウンロード」<br>
+          Chrome … 「ファイル」アプリ →「このiPhone内」→「Chrome」<br>
+          写真や動画は、そこから共有ボタン →「画像を保存」「ビデオを保存」で写真アプリに入ります</li>
+    </ol>
+    <div class="hint"><strong>毎回住所を打つ必要はありません。</strong>共有ボタン（Safari は画面の下、Chrome は右上）から
+      「ホーム画面に追加」しておくと、次からはアイコンを押すだけで全画面で開きます。ふつうのアプリとほとんど同じ使い勝手になります。<br>
+      登録するときは、なるべく <code>＜PC名＞.local</code> の方をお使いください。<code>192.168…</code> の番号は、
+      パソコンやルーターを再起動すると変わることがあり、そうなるとアイコンから開けなくなります。</div>
+    <div class="hint">※ ブラウザを開かずに、iPhone アプリの中だけで受け取れるようにアップデートを予定しています。</div>
 
     <h3>大きい動画を送るとき</h3>
     <ul>
