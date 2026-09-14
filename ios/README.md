@@ -89,7 +89,11 @@ Bundle Identifier は `jp.yastools.mrdrop` になります。
 | `Shared/MrDropShared.swift` | 🔴 **MrDrop と ShareExtension の両方** |
 | `MrDrop/Uploader.swift` | 🔴 **両方**（拡張も転送を始めるため） |
 | `MrDrop/MrDropApp.swift` | MrDrop のみ |
-| `MrDrop/ContentView.swift` | MrDrop のみ |
+| `MrDrop/RootView.swift` | MrDrop のみ（「送る」「受け取る」の2タブ） |
+| `MrDrop/ContentView.swift` | MrDrop のみ（送る画面） |
+| `MrDrop/ReceiveView.swift` | MrDrop のみ（受け取る画面） |
+| `MrDrop/Downloader.swift` | MrDrop のみ（`Uploader` の裏返し。拡張は受け取らない） |
+| `MrDrop/PeerPicker.swift` | MrDrop のみ（PC を選ぶところ・**2タブで分け合う**） |
 | `MrDrop/Discovery.swift` | MrDrop のみ |
 | `ShareExtension/ShareViewController.swift` | ShareExtension のみ（生成された同名ファイルを置き換える） |
 
@@ -183,4 +187,5 @@ group.jp.yastools.mrdrop
   Xcode で Run し直せば直ります（データは残ります）。
   切れた日は、Safari で `http://<PC名>.local:48630` を開けば送れます。
 - 写真の名前は iOS が付けたもの（`IMG_0001.HEIC` など）になります。
-- まだ **PC → iPhone** はアプリ側に作っていません。ブラウザの画面からは受け取れます。
+- **PC → iPhone もアプリの中でできます**（1.1.0・「受け取る」タブ）。ブラウザの画面からも従来どおり受け取れます。
+  🔴 お知らせ（プッシュ通知）は作れません。iOS は閉じたアプリに LAN を見張らせないためです。

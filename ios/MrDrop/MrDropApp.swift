@@ -6,12 +6,7 @@ struct MrDropApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .onAppear {
-                    MrDrop.log("アプリ", "起動")
-                    MrDrop.sweepStaging()
-                    MrDrop.exportLog()      // Mac から取り出せる場所へ写す
-                }
+            RootView()      // 起動時の後片付けは RootView の onAppear にまとめてある
         }
     }
 }

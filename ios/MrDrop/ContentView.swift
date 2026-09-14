@@ -78,19 +78,14 @@ struct PickedMP4: StagedFile {
 }
 
 struct ContentView: View {
-    @StateObject private var discovery = Discovery()
+    @EnvironmentObject private var conn: Connection
+    @ObservedObject var discovery: Discovery
     @StateObject private var uploader = Uploader(identifier: MrDrop.sessionIDApp)
 
-    @State private var peer: MrDrop.Peer? = MrDrop.lastPeer
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showFiles = false
     @State private var message: String?
     @State private var convertForPC = MrDrop.convertForPC
-    @State private var token = MrDrop.token
-    @State private var noPeerHint = false          // 探し始めて数秒たっても見つからない
-    @State private var manualAddress = ""          // 手で入れる住所（192.168.1.20:48630）
-    @State private var manualBusy = false
-    @State private var showManual = false          // 「住所を手で入れる」を開いているか
 
     var body: some View {
         NavigationStack {
@@ -101,16 +96,14 @@ struct ContentView: View {
                 peerSection
                 sendSection
                 formatSection
-                tokenSection
+                TokenSection()
             }
-            .navigationTitle("Mr.Drop")
-            .onAppear { discovery.start() }
+            .navigationTitle("送る")
             // 🔴 Discovery は1台だけのとき黙って lastPeer に入れるが、画面の ✓ は peer を見ている。
             //    そのままだと「一覧に出ているのに、選ばれていないように見える」。
             .onChange(of: discovery.peers) { _, list in
-                if peer == nil { peer = MrDrop.lastPeer ?? list.first }
+                if conn.peer == nil { conn.peer = MrDrop.lastPeer ?? list.first }
             }
-            .onDisappear { discovery.stop() }
             .alert("お知らせ", isPresented: .constant(message != nil)) {
                 Button("わかりました") { message = nil }
             } message: {
@@ -119,147 +112,17 @@ struct ContentView: View {
         }
     }
 
-    /// 手で入れた PC（自動発見の一覧に無いもの）。前回の PC が今いない場合もここに来る
-    private var manualPeer: MrDrop.Peer? {
-        guard let p = peer, !discovery.peers.contains(p) else { return nil }
-        return p
-    }
-    private var listedPeers: [MrDrop.Peer] { discovery.peers + (manualPeer.map { [$0] } ?? []) }
-
+    /// PC を選ぶところは「受け取る」と同じ物を使う（`PeerPicker.swift`）。
+    /// 🔴 ここを画面ごとに写して持つと、片方だけ直して食い違う。
     private var peerSection: some View {
-        Section {
-            if discovery.peers.isEmpty {
-                HStack {
-                    ProgressView()
-                    Text("同じ Wi-Fi の PC を探しています…").foregroundStyle(.secondary)
-                }
-                // 🔴 黙って探し続けるだけにしない。受け取る側の PC が無い人（審査官もそう）には
-                //    「何も起きないアプリ」に見える。数秒で理由と手立てを出す
-                .task {
-                    try? await Task.sleep(for: .seconds(6))
-                    noPeerHint = true
-                }
-                if noPeerHint { noPeerGuide }      // 前回の PC が残っていても、自動で見つからない限り出す
-            }
-            ForEach(listedPeers) { p in
-                Button {
-                    peer = p
-                    MrDrop.lastPeer = p
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(p.name)
-                            Text("\(p.host):\(String(p.port))" +
-                                 (discovery.peers.contains(p) ? "" : "　自動発見では見つかっていません"))
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if peer == p { Image(systemName: "checkmark").foregroundStyle(.tint) }
-                    }
-                    // 🔴 これが無いと当たり判定が文字の上だけになり、
-                    //    行の余白を押しても選べない（実機で必ず戸惑う）
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-            manualEntry
-        } header: {
-            Text("送り先の PC")
-        } footer: {
-            // 🔴 ここは最初から見えている。noPeerGuide は6秒待たないと出ないので、
-            //    「送る側だけ入れても動かない」ことは、待たずに分かるようにしておく。
-            Text("このアプリは「送る側」です。受け取るパソコン（Windows / Mac）にも Mr.Drop を入れて動かしてください（yas-tools.booth.pm で手に入ります）。同じ Wi-Fi につながっていれば、自動で見つかります。")
-        }
-    }
-
-    /// PC が見つからないときの案内。
-    /// 🔴 いちばん大事な画面。ここで詰まると、入れた人は何もできずにアプリを消す。
-    /// **「PC 版が要る」だけでなく「どこで手に入るか」まで書くこと。**
-    /// 買わせるためではなく、使えないまま放置しないため。「買う」ボタンは置かない（文字で書く）。
-    private var noPeerGuide: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("見つからないときは").font(.subheadline.bold()).foregroundStyle(.primary)
-            Text("• 受け取る側のパソコンで **Mr.Drop（PC 版）** が動いている必要があります")
-            // 🔴 「要る」とだけ書いて入手先を書かないと、入れた人はここで詰まって消す（2026-09-12 本人指摘）。
-            //    買わせるためのリンクは置かない。文字で書く。
-            Text("　PC 版（Windows / Mac）は **yas-tools.booth.pm** で手に入ります")
-            Text("• iPhone とパソコンが同じ Wi-Fi につながっているか確かめてください")
-            Text("• iPhone の「設定 › プライバシーとセキュリティ › ローカルネットワーク」で Mr.Drop が許可されているか")
-            Text("• それでも出ないときは、PC の画面に出ている住所を下に入れてください")
-        }
-        .font(.footnote).foregroundStyle(.secondary)
-    }
-
-    /// 住所を手で入れる口。いつでも使える（見つかった PC が違う・別のサブネットにいる、など）。
-    /// 見つからないまま数秒たったら自動で開く。
-    private var manualEntry: some View {
-        Group {
-            if showManual || (noPeerHint && discovery.peers.isEmpty) {
-                HStack {
-                    TextField("例: 192.168.1.20:48630", text: $manualAddress)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .onSubmit { Task { await connectManually() } }
-                    Button(manualBusy ? "確かめています…" : "つなぐ") { Task { await connectManually() } }
-                        .disabled(manualBusy || manualAddress.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            } else {
-                Button { showManual = true } label: { Label("住所を手で入れる…", systemImage: "keyboard") }
-            }
-        }
-    }
-
-    /// 手で入れた住所を確かめてから送り先にする。
-    /// `http://192.168.1.20:48630` でも `192.168.1.20:48630` でも `my-pc.local` でも通す。
-    private func connectManually() async {
-        var s = manualAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let r = s.range(of: "://") { s = String(s[r.upperBound...]) }
-        if let i = s.firstIndex(of: "/") { s = String(s[..<i]) }
-        var host = s
-        var port = 48630
-        if let i = s.lastIndex(of: ":"), let p = Int(s[s.index(after: i)...]) {
-            host = String(s[..<i])
-            port = p
-        }
-        guard !host.isEmpty, let url = URL(string: "http://\(host):\(port)/api/info") else {
-            message = "住所の形が違います。例: 192.168.1.20:48630"
-            return
-        }
-        manualBusy = true
-        defer { manualBusy = false }
-        do {
-            var req = URLRequest(url: url)
-            req.timeoutInterval = 5
-            let (data, _) = try await URLSession.shared.data(for: req)
-            let info = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-            guard info?["app"] as? String == "mrdrop" else {
-                message = "その住所に Mr.Drop はいませんでした。"
-                return
-            }
-            let p = MrDrop.Peer(name: (info?["name"] as? String) ?? host, host: host, port: port)
-            peer = p
-            MrDrop.lastPeer = p
-            manualAddress = ""
-            showManual = false
-            MrDrop.log("アプリ", "手入力で送り先を決めた \(host):\(port)")
-        } catch {
-            MrDrop.log("アプリ", "手入力の住所につながらない \(host):\(port) \(MrDrop.describe(error))")
-            message = "つながりませんでした。PC で Mr.Drop が動いているか、同じ Wi-Fi かを確かめてください。"
-        }
-    }
-
-    private var tokenSection: some View {
-        Section {
-            TextField("合言葉（PC 側で決めたもの）", text: $token)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .onChange(of: token) { _, v in MrDrop.token = v.trimmingCharacters(in: .whitespaces) }
-        } header: {
-            Text("合言葉")
-        } footer: {
-            Text("PC 側の Mr.Drop で合言葉を決めたときだけ入れます。空のままなら合言葉なしで送ります。")
-        }
+        PeerSection(
+            discovery: discovery,
+            title: "送り先の PC",
+            footer: "このアプリは送るだけでなく、PC の送信箱から受け取ることもできます（下の「受け取る」タブ）。"
+                  + "受け取るパソコン（Windows / Mac）にも Mr.Drop を入れて動かしてください"
+                  + "（yas-tools.booth.pm で手に入ります）。同じ Wi-Fi につながっていれば、自動で見つかります。",
+            message: $message
+        )
     }
 
     private var formatSection: some View {
@@ -339,12 +202,7 @@ struct ContentView: View {
         "先に送り先の PC を選んでください。受け取るパソコン（Windows / Mac）にも Mr.Drop が要ります（yas-tools.booth.pm）。"
     }
 
-    private func currentPeer() -> MrDrop.Peer? {
-        if let p = peer { return p }
-        if let p = MrDrop.lastPeer { return p }
-        if let p = discovery.peers.first { return p }
-        return nil
-    }
+    private func currentPeer() -> MrDrop.Peer? { conn.current(discovery) }
 
     /// `.mov` を **作り直さずに** `.mp4` へ詰め替える（パススルー）。画質は変わらず、数秒で終わる。
     /// 🔴 共有拡張ではやらない。メモリ 120MB の中で走らせると落ちる。

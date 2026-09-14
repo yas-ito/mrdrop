@@ -26,6 +26,20 @@ enum MrDrop {
         var id: String { "\(name)|\(host):\(port)" }
     }
 
+    // MARK: - PC の送信箱にあるファイル
+
+    /// `/api/list` が返す1件。サーバー側 `server/lib/http.js` の `listDir` と対で直すこと。
+    struct RemoteFile: Codable, Equatable, Identifiable {
+        var name: String
+        var size: Int64
+        var human: String
+        var mtime: Double        // 1970年からのミリ秒（サーバーがそう返す）
+
+        /// 同じ名前で中身が差し替わったら別物として扱いたいので、大きさと時刻まで込みの札にする。
+        var id: String { "\(name)|\(size)|\(Int64(mtime))" }
+        var modified: Date { Date(timeIntervalSince1970: mtime / 1000) }
+    }
+
     private static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
 
     /// 最後に選んだ PC。共有拡張はこれを見て送り先を決める。
@@ -60,6 +74,44 @@ enum MrDrop {
     static var token: String {
         get { defaults?.string(forKey: "token") ?? "" }
         set { defaults?.set(newValue, forKey: "token") }
+    }
+
+    /// 受け取った写真・動画を「写真」アプリへ入れるか。切ると全部ファイルアプリへ行く。
+    /// 既定は **入**（撮った物を iPhone に戻す用途がいちばん多いため）。
+    /// 🔴 `bool(forKey:)` は未設定でも false を返す。既定を入にするには object(forKey:) で見る。
+    static var receiveIntoPhotos: Bool {
+        get {
+            guard let d = defaults else { return true }
+            return d.object(forKey: "receiveIntoPhotos") == nil ? true : d.bool(forKey: "receiveIntoPhotos")
+        }
+        set { defaults?.set(newValue, forKey: "receiveIntoPhotos") }
+    }
+
+    /// もう受け取ったファイルの札。
+    /// 🔴 落としても PC の送信箱からは消えない（消す口はサーバーに無い・置いた人の物を勝手に消さない）。
+    ///    印が無いと、開くたびに同じ物が「新しい」に見えて二度三度落とすことになる。
+    /// 🔴 控えは**並び順のある配列**で持つ（古い順）。Set にして書き戻すと並びが失われ、
+    ///    500 件で切ったときに**いま付けた印が消えることがある**。読むときだけ Set にする。
+    private static var receivedList: [String] {
+        get { defaults?.stringArray(forKey: "receivedIDs") ?? [] }
+        set {
+            var a = newValue
+            if a.count > 500 { a = Array(a.suffix(500)) }   // 古い方から捨てる
+            defaults?.set(a, forKey: "receivedIDs")
+        }
+    }
+
+    static var receivedIDs: Set<String> { Set(receivedList) }
+
+    static func markReceived(_ id: String) {
+        var a = receivedList
+        guard !a.contains(id) else { return }
+        a.append(id)
+        receivedList = a
+    }
+
+    static func forgetReceived(_ id: String) {
+        receivedList = receivedList.filter { $0 != id }
     }
 
     /// 共有拡張が置いた一時ファイルの置き場（App Group の中）。
@@ -174,27 +226,118 @@ enum MrDrop {
         return ns.deletingPathExtension + "." + ext.lowercased()
     }
 
-    // MARK: - 送るための組み立て
+    // MARK: - 送り受けの組み立て
 
-    static func uploadRequest(to peer: Peer, filename: String, modified: Date?) -> URLRequest? {
+    /// 名前を URL の一区切りに詰める。サーバーは `decodeURIComponent` で開いてから
+    /// `safeName` に通す（`lib/names.js`）。
+    static func encodeSegment(_ s: String) -> String {
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
-        let encoded = filename.addingPercentEncoding(withAllowedCharacters: allowed) ?? "file"
+        return s.addingPercentEncoding(withAllowedCharacters: allowed) ?? "file"
+    }
 
-        // 🔴 IPv6 は角括弧で囲まないと URL にならない（`http://fe80::1:48630` は解釈できない）。
-        //    Bonjour の解決先が IPv6 になることは普通にあるので、ここで必ず包む。
+    /// その PC の入口。
+    /// 🔴 IPv6 は角括弧で囲まないと URL にならない（`http://fe80::1:48630` は解釈できない）。
+    ///    Bonjour の解決先が IPv6 になることは普通にあるので、ここで必ず包む。
+    static func baseURL(for peer: Peer) -> URL? {
         var host = peer.host
         if host.contains(":") && !host.hasPrefix("[") { host = "[\(host)]" }
-        guard let url = URL(string: "http://\(host):\(peer.port)/put/\(encoded)") else { return nil }
+        return URL(string: "http://\(host):\(peer.port)")
+    }
+
+    /// 合言葉を載せる。空なら何もしない。
+    private static func stamp(_ req: inout URLRequest) {
+        if !token.isEmpty { req.setValue(token, forHTTPHeaderField: "X-MrDrop-Token") }
+    }
+
+    static func uploadRequest(to peer: Peer, filename: String, modified: Date?) -> URLRequest? {
+        guard let base = baseURL(for: peer),
+              let url = URL(string: "/put/" + encodeSegment(filename), relativeTo: base) else { return nil }
 
         var req = URLRequest(url: url)
         req.httpMethod = "PUT"
         req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        if !token.isEmpty { req.setValue(token, forHTTPHeaderField: "X-MrDrop-Token") }
+        stamp(&req)
         if let m = modified {
             req.setValue(String(Int64(m.timeIntervalSince1970 * 1000)), forHTTPHeaderField: "X-MrDrop-Modified")
         }
         req.timeoutInterval = 3600      // 大きい動画を Wi-Fi で送る。既定の60秒では足りない
         return req
     }
+
+    /// PC の名乗りを聞く（`/api/info`）。手入力の住所を確かめるときにも使う。
+    static func infoRequest(to peer: Peer, timeout: TimeInterval = 5) -> URLRequest? {
+        guard let base = baseURL(for: peer), let url = URL(string: "/api/info", relativeTo: base) else { return nil }
+        var req = URLRequest(url: url)
+        stamp(&req)
+        req.timeoutInterval = timeout
+        return req
+    }
+
+    /// 送信箱の一覧をもらう（`/api/list`）。
+    /// 🔴 一覧は必ず取り直す。`cachePolicy` を既定のままにすると、PC 側で足したファイルが
+    ///    しばらく出てこない（URLSession が 304 も待たずに手元の写しを返すことがある）。
+    static func listRequest(to peer: Peer, timeout: TimeInterval = 10) -> URLRequest? {
+        guard let base = baseURL(for: peer), let url = URL(string: "/api/list", relativeTo: base) else { return nil }
+        var req = URLRequest(url: url)
+        stamp(&req)
+        req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        req.timeoutInterval = timeout
+        return req
+    }
+
+    /// 送信箱から1つ落とす（`/get/<名前>`）。
+    /// 🔴 合言葉はヘッダで渡す。`?t=` でも通るが、URL に書くと記録や画面に残る。
+    static func downloadRequest(from peer: Peer, name: String) -> URLRequest? {
+        guard let base = baseURL(for: peer),
+              let url = URL(string: "/get/" + encodeSegment(name), relativeTo: base) else { return nil }
+        var req = URLRequest(url: url)
+        stamp(&req)
+        req.timeoutInterval = 3600      // 数GBの動画を Wi-Fi で受ける
+        return req
+    }
+
+    /// 同じ名前がすでにあるとき `名前 (2).拡張子` にする。
+    /// 🔴 サーバー側（`lib/names.js` の `uniqueName`）と同じ流儀にそろえてある。
+    ///    上書きだけは絶対にしない——消えたことに誰も気づけないため。
+    static func uniqueName(_ wanted: String, exists: (String) -> Bool) -> String {
+        guard exists(wanted) else { return wanted }
+        let ns = wanted as NSString
+        let ext = ns.pathExtension
+        let base = ext.isEmpty ? wanted : ns.deletingPathExtension
+        let tail = ext.isEmpty ? "" : "." + ext
+        for i in 2..<1000 {
+            let c = "\(base) (\(i))\(tail)"
+            if !exists(c) { return c }
+        }
+        return "\(base)-\(UUID().uuidString)\(tail)"
+    }
+
+    /// 受け取ったものを置く「ファイルアプリ → Mr.Drop → 受信」。
+    /// 🔴 Documents の下でないとファイルアプリに出ない（`UIFileSharingEnabled` と対）。
+    static func receivedDirectory() throws -> URL {
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(domain: "MrDrop", code: 2,
+                          userInfo: [NSLocalizedDescriptionKey: "書ける場所が見つかりませんでした"])
+        }
+        let dir = docs.appendingPathComponent("受信", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// その名前は「写真」アプリに入れられるものか（写真・動画）。
+    /// 🔴 中身ではなく拡張子で見る。PC の送信箱から来たものに UTType は付いていない。
+    static func photoKind(for name: String) -> PhotoKind? {
+        let ext = (name as NSString).pathExtension.lowercased()
+        guard !ext.isEmpty, let t = UTType(filenameExtension: ext) else { return nil }
+        if t.conforms(to: .movie) { return .video }
+        if t.conforms(to: .image) {
+            // GIF と SVG は「写真」に入れても扱いづらい。ファイルアプリへ回す
+            if t.conforms(to: .gif) || t.conforms(to: .svg) { return nil }
+            return .photo
+        }
+        return nil
+    }
+
+    enum PhotoKind { case photo, video }
 }
