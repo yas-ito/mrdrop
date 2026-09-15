@@ -61,6 +61,7 @@ namespace MrDrop
         readonly ToolStripMenuItem stateItem;
         readonly ToolStripMenuItem startupItem;
         readonly System.Windows.Forms.Timer poll;
+        readonly string versionText;           // 「   バージョン 1.0.2」。読めなければ空
 
         Process server;
         bool quitting;
@@ -72,6 +73,12 @@ namespace MrDrop
             entryJs     = Path.Combine(appRoot, "server", "mrdrop.js");
             settingsPs1 = Path.Combine(appRoot, "scripts", "settings-windows.ps1");
             manualHtml  = Path.Combine(appRoot, "取扱説明書.html");
+
+            // 🔴 版数はここに書き写さない（ReadPort と同じ理由）。写すと server/mrdrop.js と
+            //    ずれたときに黙って食い違い、**どちらが入っているのか分からなくなる**。
+            //    入れ替えると exe も起動し直すので、ここで1回読めば足りる。
+            string v = ReadVersion();
+            versionText = v.Length > 0 ? "   バージョン " + v : "";
 
             stateItem = new ToolStripMenuItem("しらべています…");
             stateItem.Enabled = false;
@@ -131,7 +138,7 @@ namespace MrDrop
         void Refresh()
         {
             bool up = server != null && !server.HasExited;
-            stateItem.Text = up ? "● 動いています" : "○ 止まっています";
+            stateItem.Text = (up ? "● 動いています" : "○ 止まっています") + versionText;
 
             string tip = Program.AppName + (up ? " — 動いています" : " — 止まっています");
             int port = ReadPort();
@@ -160,6 +167,21 @@ namespace MrDrop
             }
             catch { }
             return 0;
+        }
+
+        // 版数は server/mrdrop.js から読む（本体が名乗るのと同じ数）。
+        // 🔴 ここに書き写さないこと。上の ReadPort と同じ理由で、写すと黙って食い違い、
+        //    **どちらの版が入っているのか分からなくなる**（入れ替えのたびに必ず要る情報）。
+        string ReadVersion()
+        {
+            try
+            {
+                if (!File.Exists(entryJs)) return "";
+                var m = Regex.Match(File.ReadAllText(entryJs, Encoding.UTF8), "const VERSION = \"([^\"]+)\"");
+                if (m.Success) return m.Groups[1].Value;
+            }
+            catch { }
+            return "";
         }
 
         // ── 本体（node）を抱える ──────────────────────────────

@@ -235,6 +235,24 @@ module.exports = async function (t) {
        "🔴 作り直した MrDropTray.exe にも入っている（build\\build-tray.ps1 を忘れていない）");
   });
 
+  // 🔴 どの版が入っているかは、入れ替えのたびに必ず要る（1.0.1 と 1.0.2 で実際に困った）。
+  //    雫を右クリックしたら、いちばん上で分かるようにしてある（本人の指示 2026-09-15）。
+  //    🔴 版数を C# に書き写さないこと。写すと本体とずれて、黙って食い違う。
+  suite("常駐アイコン — 入っている版が分かる", () => {
+    const cs = path.join(__dirname, "..", "..", "tray", "MrDropTray.cs");
+    if (!fs.existsSync(cs)) { ok(true, "元のソースが無い（配布物の中では省かれる）"); return; }
+    const src = fs.readFileSync(cs, "utf8");
+    ok(/string ReadVersion\(\)/.test(src), "版数を読む口がある");
+    ok(src.includes('const VERSION = \\"([^\\"]+)\\"'), "server/mrdrop.js の VERSION から読んでいる");
+    ok(!/"\d+\.\d+\.\d+"/.test(src), "🔴 版数を書き写していない（ここがずれると見分けられなくなる）");
+    ok(/stateItem\.Text\s*=[^;]*versionText/.test(src), "右クリックのいちばん上に出している");
+
+    const exe = path.join(__dirname, "..", "..", "tray", "MrDropTray.exe");
+    if (!fs.existsSync(exe)) { ok(true, "MrDropTray.exe が無い"); return; }
+    ok(fs.readFileSync(exe).includes(Buffer.from("   バージョン ", "utf16le")),
+       "🔴 作り直した exe にも入っている（build\\build-tray.ps1 を忘れていない）");
+  });
+
   // 🔴 設定ファイルはプログラムの隣に置かない（本人が実際につまずいた 2026-09-12）。
   //    Windows は展開したフォルダを %LOCALAPPDATA%\MrDrop\app へ写して、
   //    元のフォルダは捨ててよい作りにした。設定が隣にあると、捨てた瞬間に消える。
