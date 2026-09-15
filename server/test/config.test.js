@@ -241,6 +241,10 @@ module.exports = async function (t) {
        "🔴 フォルダごと動かしている（中身だけ運ぶ作りに戻っていない）");
     ok(/\$dest = Join-Path \$parent \$OutboxName/.test(psSrc),
        "🔴 行き先は「選んだ場所 ＋ 送信箱の名前」（選ばれたフォルダ自体を送信箱にしない）");
+    // 🔴 2026-09-15・2度目の事故。1.0.6 までの作りで**本人のフォルダが送信箱になっている**人がいる。
+    //    それを動かすと「テキストスタイル」が「Mr.Drop送信箱」に名前を変えて運ばれる（実際にやった）。
+    ok(/\$nowName -ne \$OutboxName/.test(psSrc),
+       "🔴 前の送信箱が買った人のフォルダなら、動かさずに残す");
     ok(psSrc.includes('$OutboxName = "' + OUTBOX + '"'),
        "🔴 送信箱の名前が node 側（config.js の OUTBOX）と同じ");
 

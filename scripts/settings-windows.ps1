@@ -471,11 +471,23 @@ if ($MoveOutbox) {
 
   $dest = Join-Path $parent $OutboxName
   $note = ""
+  $nowName = Split-Path -Leaf $now
 
   if (-not (Test-Path -LiteralPath $now)) {
     # いまの送信箱が消えている（手で消した人がいる）。新しい場所に作るだけ。
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
     $note = "`n`n（前の送信箱が見つからなかったので、新しく作りました）"
+  } elseif ($nowName -ne $OutboxName) {
+    # 🔴 前の送信箱が「$OutboxName」ではない＝**買った人のフォルダが送信箱になっている**
+    #    （1.0.6 までの作りで、好きなフォルダを送信箱にできた人がいる）。
+    #    それを動かすと、**名前まで変えて運ぶ**ことになる。実際にやってしまった
+    #    （`Videos\テキストスタイル` → `Music\Mr.Drop送信箱`。2026-09-15）。
+    #    🔴 **動かしてよいのは、Mr.Drop が作ったフォルダだけ。**触らずに残す。
+    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    Write-Host ""
+    Warn "前の送信箱はあなたのフォルダ（$nowName）なので、動かしていません:"
+    Say "  $now"
+    $note = "`n`n前の送信箱はあなたのフォルダ（$nowName）でした。`n動かさず、そのまま残してあります:`n$now"
   } elseif (Test-Path -LiteralPath $dest) {
     # 🔴 行き先に同じ名前の送信箱が先にあった。**上書きしない**で中身を足す。
     $r = Move-OutboxContents $now $dest
