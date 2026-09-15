@@ -59,8 +59,23 @@ function Warn ($m) { Write-Host "   ! $m" -ForegroundColor Yellow }
 function Wait-IfAsked {
   if ($Pause) { Write-Host ""; Read-Host "  Enter を押すと閉じます" | Out-Null }
 }
+# 🔴 雫のメニューから呼ばれたときは、**窓が隠れています**
+#    （MrDropTray が -WindowStyle Hidden で起動するため）。
+#    Write-Host だけで済ませると「**誰も読めない画面に出して終わる**」ことになり、
+#    押した人には「何も起きない」に見えます（2026-09-15 に実際に起きました）。
+#    **画面が無いときは、必ず窓を出して知らせること。**
+function Show-Box ($m, $icon) {
+  if (-not $FromTray) { return }        # .bat から呼ばれたときは黒い画面が出ているので要らない
+  try {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show($m, "Mr.Drop", 'OK', $icon) | Out-Null
+  } catch { }
+}
+
 function Fail ($m) {
   Write-Host ""; Write-Host "🔴 $m" -ForegroundColor Red; Write-Host ""
+  # 黒い画面用の字下げは、窓に出すときは邪魔なので落とす
+  Show-Box ((($m -split "`n") | ForEach-Object { $_.TrimStart() }) -join "`n") 'Warning'
   Wait-IfAsked
   exit 1
 }
@@ -377,6 +392,8 @@ if ($ChooseInbox) {
 
   Write-Host ""
   Say "受信先を変えました: $new"
+  # 🔴 雫から呼ばれたときは黒い画面が見えない。必ず窓で知らせる。
+  Show-Box "受信先を変えました:`n`n$new" 'Information'
   if (Restart-Tray) { Say "常駐を入れ直したので、もう効いています。" }
   else { Warn "動いていなければ、次に Mr.Drop を開いたときから効きます。" }
   Write-Host ""
@@ -470,6 +487,7 @@ if ($ChooseOutbox) {
   if (Test-SamePlace $new $now) {
     Write-Host ""
     Say "そこは、いまの送信箱と同じ場所です。何も変えていません。"
+    Show-Box "そこは、いまの送信箱と同じ場所です。`n`n何も変えていません。" 'Information'
     Wait-IfAsked
     exit 0
   }
@@ -478,6 +496,7 @@ if ($ChooseOutbox) {
   #    送信箱に選ばれたフォルダの中身は「送信箱の中身」ではなく**買った人の持ち物**。
   #    こちらの都合で動かしてよいものではない。数と場所を見せて、**必ず聞く**。
   $r = $null
+  $note = ""
   $count = 0
   if (Test-Path -LiteralPath $now) { $count = @(Get-ChildItem -LiteralPath $now -Force).Count }
   if ($count -gt 0) {
@@ -486,6 +505,7 @@ if ($ChooseOutbox) {
       Write-Host ""
       Warn "いまの送信箱は Windows の大事なフォルダそのものなので、中身は動かしません:"
       Say "  $now"
+      $note = "`n`n前の送信箱は Windows の大事なフォルダそのものなので、中身は動かしていません:`n$now"
     } else {
       $ans = [System.Windows.Forms.MessageBox]::Show(
         "いまの送信箱に $count 個あります。`n`n$now`n`n新しい送信箱へ移しますか？`n`n" +
@@ -498,6 +518,7 @@ if ($ChooseOutbox) {
       } else {
         Write-Host ""
         Say "中身は動かしませんでした（いまの場所に残っています）。"
+        $note = "`n`n中身は動かしていません（前の場所にそのまま残っています）:`n$now"
       }
     }
   }
@@ -508,11 +529,18 @@ if ($ChooseOutbox) {
 
   Write-Host ""
   Say "送信箱を変えました: $new"
-  if ($r -and $r.moved -gt 0) { Say "中身を $($r.moved) 個、引っ越しました。" }
+  $msg = "送信箱を変えました:`n`n$new"
+  if ($r -and $r.moved -gt 0) {
+    Say "中身を $($r.moved) 個、引っ越しました。"
+    $msg += "`n`n中身を $($r.moved) 個、引っ越しました。"
+  }
   if ($r -and $r.left -gt 0) {
     Warn "$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:"
     Say "  $now"
+    $msg += "`n`n$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:`n$now"
   }
+  # 🔴 雫から呼ばれたときは黒い画面が見えない。必ず窓で知らせる。
+  Show-Box ($msg + $note) 'Information'
   if (Restart-Tray) { Say "常駐を入れ直したので、もう効いています。" }
   else { Warn "動いていなければ、次に Mr.Drop を開いたときから効きます。" }
   Write-Host ""

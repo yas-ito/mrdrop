@@ -239,6 +239,15 @@ module.exports = async function (t) {
     ok(/MessageBox\]::Show/.test(psSrc), "🔴 中身を移す前に必ず聞いている");
     ok(/if \(Test-StandardFolder \$new\)/.test(psSrc), "🔴 大事なフォルダそのものは選ばせない");
     ok(/if \(Test-StandardFolder \$now\)/.test(psSrc), "🔴 前の送信箱が大事なフォルダなら、中身を動かさない");
+
+    // 🔴 2026-09-15。雫から呼ばれるとき、常駐アイコンは PowerShell を **-WindowStyle Hidden** で
+    //    起動する。断りも知らせも Write-Host だけでは**誰も読めない画面に出して終わる**ことになり、
+    //    押した人には「何も起きない」に見えた（実際に起きた）。**必ず窓で知らせること。**
+    ok(/-WindowStyle Hidden/.test(csSrc), "常駐アイコンは窓を隠して呼んでいる（だから下が要る）");
+    ok(/function Show-Box/.test(psSrc), "窓で知らせる口がある");
+    ok(/Show-Box[^\n]*'Warning'/.test(psSrc), "🔴 断るときも窓で知らせる");
+    ok(/Show-Box[^\n]*'Information'/.test(psSrc), "🔴 変えたときも窓で知らせる");
+    ok(/if \(-not \$FromTray\) \{ return \}/.test(psSrc), "黒い画面が見えているときは、二重に出さない");
     ok(/Test-SamePlace \$new \(Get-InboxPath\)/.test(psSrc),
        "🔴 受信先と同じ場所は断っている（届いた物が全部見えてしまう）");
 
