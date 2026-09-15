@@ -155,13 +155,21 @@ extension Uploader: URLSessionDataDelegate {
         let name = task.originalRequest?.url?.lastPathComponent ?? "?"
         let startedAt = takeStart(task.taskIdentifier)
         if let e = error {
-            MrDrop.log("転送", "🔴 失敗 \(name) \(MrDrop.describe(e))")
+            // 🔴 -997（バックグラウンド転送サービスとの接続が解除された）は、**送り終えたあとに
+            //    遅れて届くことがある**（2026-09-15 実測: HTTP 200 の6秒後）。プロセスが入れ替わると
+            //    前のタスクの後始末がここへ来るため。**届いているのに「失敗」と出したら嘘になる。**
+            let late = (e as NSError).code == NSURLErrorBackgroundSessionWasDisconnected
+            MrDrop.log("転送", (late ? "🔵 遅れて来た知らせ " : "🔴 失敗 ") + "\(name) \(MrDrop.describe(e))")
         } else {
             let secs = -(startedAt?.timeIntervalSinceNow ?? 0)
             let mbps = secs > 0.2 ? String(format: "%.1f MB/秒", Double(task.countOfBytesSent) / secs / 1_048_576) : "—"
             MrDrop.log("転送", "終了 \(name) HTTP \(status) \(task.countOfBytesSent) バイト \(String(format: "%.1f", secs))秒 \(mbps)")
         }
         update(task.taskIdentifier) { j in
+            // 🔴 **終わった行を、あとから赤くしない。**
+            //    タスクの番号は**セッションの中でしか一意ではない**（前面用と背面用で重なる）。
+            //    遅れて来た知らせが、別の（もう届いている）行を「失敗」に変えてしまう。
+            guard !j.finished else { return }
             j.finished = true
             if let e = error {
                 j.error = e.localizedDescription
