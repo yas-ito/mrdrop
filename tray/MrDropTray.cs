@@ -83,6 +83,10 @@ namespace MrDrop
             menu.Items.Add(stateItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("保存先を開く", null, (s, e) => RunSettings("-OpenInbox", false)));
+            // 🔴 送信箱はデスクトップの中だが、**デスクトップの場所は人によって違う**
+            //    （OneDrive でデスクトップを移している人がいる）。2026-09-15 に買った人が
+            //    「送信箱がデスクトップに出てこない」で詰まった。ここから必ず開ける。
+            menu.Items.Add(new ToolStripMenuItem("送信箱を開く", null, (s, e) => RunSettings("-OpenOutbox", false)));
             menu.Items.Add(new ToolStripMenuItem("保存先を変える...", null, (s, e) => ChangeInbox()));
             menu.Items.Add(new ToolStripMenuItem("この PC の名前を変える...", null, (s, e) => ChangeName()));
             menu.Items.Add(new ToolStripMenuItem("取扱説明書", null, (s, e) => OpenManual()));

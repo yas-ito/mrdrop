@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mr.Drop v1.0.0 取扱説明書</title>
+<title>Mr.Drop v1.0.1 取扱説明書</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -143,7 +143,7 @@
 <div class="page">
   <div class="cover-header">
     <div class="cover-logo">Mr.<span>Drop</span></div>
-    <div class="cover-version">version 1.0.0 — 取扱説明書</div>
+    <div class="cover-version">version 1.0.1 — 取扱説明書</div>
     <div class="cover-tagline">iPhone から、同じ Wi-Fi の PC へ。写真も動画も、そのまま。</div>
     <div class="cover-badge">Windows / インターネットに出ません</div>
   </div>
@@ -219,7 +219,9 @@
             <pre>  ● 動いています
   ──────────────
   保存先を開く
+  送信箱を開く
   保存先を変える...
+  この PC の名前を変える...
   取扱説明書
   ☑ Windows 起動時に自動で開始
   ──────────────
@@ -230,7 +232,7 @@
           </div>
           <div class="hint">アイコンを閉じてしまったら、<strong>スタートメニュー &gt; Mr.Drop</strong> から出し直せます。</div>
           <p style="margin-top:14px">動き出すと、こう表示されます（この画面は閉じて構いません）。</p>
-          <pre>  Mr.Drop 1.0.0   MY-PC
+          <pre>  Mr.Drop 1.0.1   MY-PC
 ────────────────────────────────────────────────────
   保存先  C:\Users\あなた\Downloads
   送信箱  C:\Users\あなた\Desktop\Mr.Drop送信箱
@@ -268,7 +270,7 @@
 
   </div>
   <div class="footer">
-    <span>Mr.Drop v1.0.0 取扱説明書</span><span>1 / 3</span><span>© 2026</span>
+    <span>Mr.Drop v1.0.1 取扱説明書</span><span>1 / 3</span><span>© 2026</span>
   </div>
 </div>
 <div class="page-break"></div>
@@ -286,11 +288,22 @@
       <p><strong>選んだ瞬間に送り始めます。</strong>「送信」ボタンを探す必要はありません。
          棒グラフが伸びて「送りました」に変われば完了です。何度も選び直すと、同じ写真が何枚も届きます。</p>
     </div>
-    <p>届いたものは PC の<strong>保存先</strong>に入ります。初期設定は <code>C:UsersあなたDownloads</code>、
+    <p>届いたものは PC の<strong>保存先</strong>に入ります。初期設定は <code>C:\Users\あなた\Downloads</code>、
        つまり<strong>いつもの「ダウンロード」フォルダそのもの</strong>です。専用のフォルダは作りません。</p>
 
     <h3>PC → iPhone（受け取る）</h3>
     <p>デスクトップの<strong>「Mr.Drop送信箱」</strong>フォルダに入れたファイルを、iPhone から受け取れます。</p>
+    <div class="hint"><strong>デスクトップに見当たらないときは、</strong>タスクバーのアイコンを右クリック →
+       「<strong>送信箱を開く</strong>」を押してください。そこが送信箱です。<br>
+       OneDrive で「デスクトップ」をバックアップしていると、デスクトップそのものが
+       <code>C:\Users\あなた\OneDrive\デスクトップ</code> に移っていることがあり、送信箱もそちらにできます。</div>
+    <div class="caution">
+      <div class="caution-title">⚠ 送信箱そのものは、動かさないでください</div>
+      <p>別の場所へ移すと、<strong>iPhone から中身が見えなくなります</strong>（空の送信箱に見えます）。
+         Mr.Drop は元の場所を見にいくためです。デスクトップから開きたいだけなら、
+         <strong>右クリック →「その他のオプションを表示」→「送る」→「デスクトップ (ショートカットを作成)」</strong>で
+         ショートカットを置いてください。中身はそのままで、デスクトップから開けるようになります。</p>
+    </div>
     <div class="caution">
       <div class="caution-title">⚠ こちらは iPhone から取りに行く作りです</div>
       <p><strong>送信箱に入れても、iPhone にもパソコンにも通知は出ません。</strong>
@@ -376,7 +389,8 @@
          そのまま編集用のフォルダに落ちてきます。<strong>取り込みの手間がまるごと無くなります。</strong></p>
     </div>
     <p>アイコンを右クリック →「<strong>保存先を開く</strong>」で、いまの保存先をそのまま開けます
-       （アイコンを<strong>ダブルクリック</strong>しても開きます）。</p>
+       （アイコンを<strong>ダブルクリック</strong>しても開きます）。
+       同じところの「<strong>送信箱を開く</strong>」で、iPhone へ渡す物を置く送信箱も開けます。</p>
     <div class="hint">展開したフォルダをまだ持っているなら、その中の
       <code>保存先を変える.bat</code> / <code>保存先を開く.bat</code> でも同じことができます。
       <strong>どちらを押しても、見ている設定は同じ1つです。</strong></div>
@@ -422,7 +436,7 @@
 
   </div>
   <div class="footer">
-    <span>Mr.Drop v1.0.0 取扱説明書</span><span>2 / 3</span><span>© 2026</span>
+    <span>Mr.Drop v1.0.1 取扱説明書</span><span>2 / 3</span><span>© 2026</span>
   </div>
 </div>
 <div class="page-break"></div>
@@ -525,6 +539,14 @@
       そのときはこの道具は使えません。</div>
 
     <h2>更新履歴</h2>
+    <h3>v1.0.1</h3>
+    <ul>
+      <li><strong>「Mr.Drop送信箱」がデスクトップに出てこないことがあったのを直しました。</strong>
+          OneDrive で「デスクトップ」をバックアップしていると、デスクトップの場所そのものが
+          移っているためでした。置き場所を決め打ちせず、OS に聞くようにしました。
+          <strong>これまでお使いの方は、更新すると送信箱が中身ごと引っ越します</strong>（何もしなくて構いません）</li>
+      <li>タスクバーのアイコンに「<strong>送信箱を開く</strong>」を足しました</li>
+    </ul>
     <h3>v1.0.0</h3>
     <ul><li>初回リリース</li></ul>
 
@@ -540,7 +562,7 @@
 
   </div>
   <div class="footer">
-    <span>Mr.Drop v1.0.0 取扱説明書</span><span>3 / 3</span><span>© 2026</span>
+    <span>Mr.Drop v1.0.1 取扱説明書</span><span>3 / 3</span><span>© 2026</span>
   </div>
 </div>
 

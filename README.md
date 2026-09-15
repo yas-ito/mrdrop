@@ -37,7 +37,7 @@ node server/mrdrop.js
 こう出ます。
 
 ```
-  Mr.Drop 1.0.0   MY-PC
+  Mr.Drop 1.0.1   MY-PC
 ────────────────────────────────────────────────────
   保存先  C:\Users\<あなた>\Downloads
   送信箱  C:\Users\<あなた>\Desktop\Mr.Drop送信箱
@@ -137,8 +137,8 @@ bash scripts/install-mac.sh --uninstall  # 外す
 ```json
 {
   "port": 48630,
-  "inbox": "%USERPROFILE%\\Downloads",
-  "outbox": "%USERPROFILE%\\Desktop\\Mr.Drop送信箱",
+  "inbox": "C:\\Users\\あなた\\Downloads",
+  "outbox": "C:\\Users\\あなた\\Desktop\\Mr.Drop送信箱",
   "name": "",
   "token": ""
 }
@@ -147,6 +147,14 @@ bash scripts/install-mac.sh --uninstall  # 外す
 置き場所の既定は OS で変わります（上は Windows）。Mac では `~/Downloads`・
 `~/Desktop/Mr.Drop送信箱` になります。**送信箱だけはデスクトップ**で、両OSとも同じです。`~` と `%USERPROFILE%` はどちらの OS でも家に開くので、
 **Windows で書いた `config.json` を Mac へ持っていってもそのまま読めます。**
+
+🔴 **Windows では、置き場所を決め打ちしません**（2026-09-15・買った人の報告で直しました）。
+OneDrive の「PC のフォルダーのバックアップ」が入っていると、本当のデスクトップは
+`C:\Users\あなた\OneDrive\デスクトップ` へ移っていて、`%USERPROFILE%\Desktop` は
+**画面に出てこない抜け殻**として残ります。そこへ送信箱を作ると、買った人のデスクトップには
+何も現れません（**エラーは一つも出ません**）。だから初回に OS へ聞いて、
+`config.json` には**実際の場所**を書きます。1.0.0 で作られた古い設定は、
+起動したときに黙って直します（中身も引っ越します。`server/lib/config.js` の `fixStaleOutbox`）。
 
 | 項目 | 意味 |
 |---|---|

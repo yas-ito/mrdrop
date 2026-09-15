@@ -5,22 +5,31 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { load, expand, defaultFile, DEFAULTS } = require("../lib/config");
+const { execFileSync } = require("child_process");
+const { load, expand, defaultFile, defaults, askWindows, fixStaleOutbox, OUTBOX } = require("../lib/config");
+
+const WIN = process.platform === "win32";
 
 module.exports = async function (t) {
   const { suite, eq, ok } = t;
 
+  // 🔴 Windows の「デスクトップ」「ダウンロード」は %USERPROFILE% の下とは限らない
+  //    （OneDrive の「PC のフォルダーのバックアップ」。2026-09-15・買った人の報告で発覚）。
+  //    だから「%USERPROFILE%\Desktop であること」ではなく「**OS が言う場所であること**」を見る。
+  const realDesk = path.resolve((WIN && askWindows().desktop) || path.join(os.homedir(), "Desktop"));
+  const realDL = path.resolve((WIN && askWindows().downloads) || path.join(os.homedir(), "Downloads"));
+
   suite("置き場所 — 既定値はどの OS でも家の中に落ちる", () => {
-    const inbox = path.resolve(expand(DEFAULTS.inbox));
-    const outbox = path.resolve(expand(DEFAULTS.outbox));
-    ok(inbox.startsWith(os.homedir() + path.sep), "保存先の既定は家の中（" + inbox + "）");
-    ok(outbox.startsWith(os.homedir() + path.sep), "送信箱の既定は家の中");
+    const def = defaults();
+    const inbox = path.resolve(expand(def.inbox));
+    const outbox = path.resolve(expand(def.outbox));
     ok(!inbox.includes("%"), "🔴 展開されずに残った %VAR% がフォルダ名にならない");
     ok(!inbox.includes(path.sep + path.sep), "区切りが二重になっていない");
+    ok(path.isAbsolute(inbox) && path.isAbsolute(outbox), "どちらも絶対パスになっている");
 
     // 🔴 既定は**両OSともダウンロードフォルダそのもの**（本人決定 2026-09-12）。
     //    専用のフォルダを勝手に作らない。ここが変わったら、それは仕様変更。
-    eq(inbox, path.join(os.homedir(), "Downloads"), "両OSともダウンロードフォルダそのもの");
+    eq(inbox, realDL, "両OSともダウンロードフォルダそのもの（" + inbox + "）");
     ok(!inbox.endsWith("受信箱"), "🔴 「受信箱」という名前のフォルダを作らない（やめた名前）");
 
     // 🔴 送信箱だけは専用のフォルダ。中身が同じ Wi-Fi から一覧できるので、
@@ -28,27 +37,46 @@ module.exports = async function (t) {
     // 🔴 送信箱はデスクトップの中の専用フォルダ（本人指示 2026-09-12）。
     //    iPhone へ渡す物を置く場所なので、目に見えてすぐ放り込める所に置く。
     //    デスクトップ「そのもの」にはしない（中身が同じ Wi-Fi から一覧できるため）。
-    eq(outbox, path.join(os.homedir(), "Desktop", "Mr.Drop送信箱"), "送信箱はデスクトップの中の専用フォルダ");
+    eq(outbox, path.join(realDesk, OUTBOX), "送信箱はデスクトップの中の専用フォルダ");
     ok(outbox !== inbox, "🔴 送信箱と保存先が同じ場所になっていない");
   });
 
-  // 🔴 settings-windows.ps1 の Read-Config にも同じ既定が書いてある。
-  //    ここがずれると、一度も起動していない人が先に「保存先を変える.bat」を押したとき、
+  // 🔴 これが 2026-09-15 の取りこぼしそのものです。%USERPROFILE%\Desktop を決め打ちしていたので、
+  //    OneDrive でデスクトップを移している人の送信箱は「画面に出てこない抜け殻」の中にできていた。
+  //    **エラーは一つも出ませんでした。**買った人に言われるまで気づけません。
+  suite("置き場所 — デスクトップの場所を OS に聞いている", () => {
+    if (!WIN) { ok(true, "Windows でだけ測れる（Mac の ~/Desktop は動かない）"); return; }
+    const win = askWindows();
+    ok(win.desktop && fs.existsSync(win.desktop), "デスクトップの本当の場所を取れた（" + win.desktop + "）");
+    ok(win.downloads && fs.existsSync(win.downloads), "ダウンロードの本当の場所を取れた（" + win.downloads + "）");
+  });
+
+  // 🔴 settings-windows.ps1 にも同じ既定が書いてある。ここがずれると、
+  //    一度も起動していない人が先に「保存先を変える.bat」を押したとき、
   //    間違った既定が config.json に書き込まれて固定される（Mac 側の指摘 2026-09-12・実際にずれていた）。
   //    手で揃えるのは必ずまた外すので、機械で突き合わせる。
   suite("置き場所 — PowerShell 側の既定と食い違っていない", () => {
     const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
     if (!fs.existsSync(ps1)) { ok(true, "settings-windows.ps1 が無い（配布物の中では省かれる）"); return; }
     const src = fs.readFileSync(ps1, "utf8");
-    const pick = (k) => (src.match(new RegExp(k + String.raw`\s*=\s*"([^"]+)"`)) || [])[1];
-    // 🔴 文字どおり突き合わせない。既定の**書き方**は OS で変わるため
-    //    （JS は Mac で "~/Downloads"、PowerShell はいつも "%USERPROFILE%\Downloads"）、
-    //    そのまま比べると **Mac では何を直しても必ず赤くなる**（2026-09-12 に Mac で発覚）。
-    //    見たいのは書き方ではなく「**同じ場所を指しているか**」なので、expand() に通してから比べる。
-    const where = (v) => (typeof v === "string" ? path.resolve(expand(v)) : String(v));
-    eq(where(pick("inbox")), where(DEFAULTS.inbox), "inbox の既定がそろっている");
-    eq(where(pick("outbox")), where(DEFAULTS.outbox), "outbox の既定がそろっている");
-    eq(String((src.match(/port\s*=\s*(\d+)/) || [])[1]), String(DEFAULTS.port), "port の既定がそろっている");
+
+    // 🔵 Mac からはここまで（powershell が無いので走らせられない）。読み方が同じかを見る。
+    ok(/GetFolderPath\('DesktopDirectory'\)/.test(src), "デスクトップは OS に聞いている（決め打ちしていない）");
+    ok(src.includes("{374DE290-123F-4565-9164-39C4925E467B}"), "ダウンロードは既知フォルダの ID で読んでいる");
+    ok(!/outbox\s*=\s*"%USERPROFILE%/.test(src), "🔴 %USERPROFILE%\\Desktop の決め打ちが戻っていない");
+    if (!WIN) { ok(true, "同じ場所を指すかどうかは Windows で測る"); return; }
+
+    // 🔴 文字どおり突き合わせない。見たいのは書き方ではなく「**同じ場所を指しているか**」。
+    //    PowerShell 側に -PrintDefaults を用意してあるので、走らせた答えを比べる。
+    const out = execFileSync("powershell", [
+      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps1, "-PrintDefaults",
+    ], { stdio: ["ignore", "pipe", "ignore"], timeout: 30000, windowsHide: true });
+    const ps = JSON.parse(out.toString("utf8"));
+    const def = defaults();
+    const where = (v) => path.resolve(expand(String(v)));
+    eq(where(ps.inbox), where(def.inbox), "inbox の既定がそろっている");
+    eq(where(ps.outbox), where(def.outbox), "outbox の既定がそろっている");
+    eq(Number(ps.port), def.port, "port の既定がそろっている");
   });
 
   suite("置き場所 — Windows で書いた config.json を Mac へ持っていっても読める", () => {
@@ -74,7 +102,7 @@ module.exports = async function (t) {
     try {
       const cfg = load(file);
       ok(fs.existsSync(file), "無ければ作る");
-      eq(cfg.port, DEFAULTS.port, "番号は既定のまま");
+      eq(cfg.port, defaults().port, "番号は既定のまま");
       ok(path.isAbsolute(cfg.inbox), "保存先は絶対パスになっている");
       ok(cfg.inbox.startsWith(os.homedir() + path.sep), "🔴 カレントではなく家の中に作る");
       ok(String(cfg.displayName).length > 0, "名前が空なら PC 名が入る");
@@ -87,6 +115,89 @@ module.exports = async function (t) {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  // 🔴 1.0.0 が %USERPROFILE%\Desktop を決め打ちしていた分の後始末（2026-09-15）。
+  //    すでに買った人の config.json は、画面に出てこない抜け殻を指したままになっている。
+  //    起動したときに黙って直す。**中身も一緒に引っ越す**（置いていくと、消えたように見える）。
+  suite("送信箱 — 古い設定を直して、中身も引っ越す", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mrdrop-outbox-"));
+    try {
+      const stale = path.join(dir, "抜け殻デスクトップ", OUTBOX);
+      const desk = path.join(dir, "本当のデスクトップ");
+      const file = path.join(dir, "config.json");
+      fs.mkdirSync(stale, { recursive: true });
+      fs.mkdirSync(desk, { recursive: true });
+      fs.writeFileSync(path.join(stale, "渡したい書類.txt"), "中身", "utf8");
+      fs.mkdirSync(path.join(stale, "フォルダごと"));
+      fs.writeFileSync(path.join(stale, "フォルダごと", "中の物.txt"), "中身", "utf8");
+      fs.writeFileSync(file, JSON.stringify({ port: 48630, outbox: stale, name: "テスト機" }), "utf8");
+
+      const cfg = { outbox: stale };
+      const moved = fixStaleOutbox(cfg, file, { stale, desktop: desk });
+      const after = () => JSON.parse(fs.readFileSync(file, "utf8"));
+
+      ok(moved && moved.moved === 2, "中身を引っ越した（2 個）");
+      eq(cfg.outbox, path.join(desk, OUTBOX), "送信箱は本当のデスクトップの中になった");
+      ok(fs.existsSync(path.join(desk, OUTBOX, "渡したい書類.txt")), "ファイルが新しい場所にある");
+      ok(fs.existsSync(path.join(desk, OUTBOX, "フォルダごと", "中の物.txt")), "フォルダごと移っている");
+      ok(!fs.existsSync(stale), "🔴 空になった抜け殻は残さない（同じ物が2か所にあると必ず迷う）");
+      eq(after().outbox, path.join(desk, OUTBOX), "config.json も書き直してある");
+      eq(after().name, "テスト機", "🔴 ほかの設定は触らない");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  suite("送信箱 — 古い設定を直すとき、やり過ぎない", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mrdrop-outbox2-"));
+    try {
+      const stale = path.join(dir, "抜け殻", OUTBOX);
+      const desk = path.join(dir, "デスクトップ");
+      const file = path.join(dir, "config.json");
+      fs.mkdirSync(stale, { recursive: true });
+      fs.mkdirSync(path.join(desk, OUTBOX), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify({ outbox: stale }), "utf8");
+
+      // 🔴 本人が自分で選んだ場所は触らない
+      const mine = { outbox: path.join(dir, "本人が選んだ場所") };
+      eq(fixStaleOutbox(mine, file, { stale, desktop: desk }), null, "自分で選んだ場所には手を出さない");
+      eq(mine.outbox, path.join(dir, "本人が選んだ場所"), "指したままにする");
+
+      // 🔴 デスクトップを移していない人（抜け殻がそのまま本物）には、何もしない
+      eq(fixStaleOutbox({ outbox: stale }, file, { stale, desktop: path.dirname(stale) }), null,
+         "デスクトップを移していない人には何もしない");
+
+      // 🔴 同じ名前が先にあったら上書きしない（この道具の決まり）
+      fs.writeFileSync(path.join(stale, "同じ名前.txt"), "あとから来た方", "utf8");
+      fs.writeFileSync(path.join(desk, OUTBOX, "同じ名前.txt"), "先にあった方", "utf8");
+      const moved = fixStaleOutbox({ outbox: stale }, file, { stale, desktop: desk });
+      eq(moved.left, 1, "先にあった物は見送る");
+      eq(fs.readFileSync(path.join(desk, OUTBOX, "同じ名前.txt"), "utf8"), "先にあった方", "🔴 上書きしない");
+      ok(fs.existsSync(path.join(stale, "同じ名前.txt")), "🔴 移せなかった物は消さない（前の場所に残す）");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // 🔴 送信箱はデスクトップの中だが、**デスクトップの場所は人によって違う**。
+  //    見つからない人のために、常駐アイコンから必ず開けるようにした（2026-09-15）。
+  //    呼ぶ側（常駐アイコン）と受ける側（.ps1）が食い違うと、押しても何も起きない。
+  suite("送信箱 — 常駐アイコンから開ける", () => {
+    const cs = path.join(__dirname, "..", "..", "tray", "MrDropTray.cs");
+    const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
+    if (!fs.existsSync(cs) || !fs.existsSync(ps1)) { ok(true, "元のソースが無い（配布物の中では省かれる）"); return; }
+    const csSrc = fs.readFileSync(cs, "utf8");
+    const psSrc = fs.readFileSync(ps1, "utf8");
+    ok(/ToolStripMenuItem\("送信箱を開く"[\s\S]{0,80}-OpenOutbox/.test(csSrc), "メニューに「送信箱を開く」がある");
+    ok(/\[switch\]\$OpenOutbox/.test(psSrc), "🔴 .ps1 が -OpenOutbox を受ける（押して何も起きないのが一番こまる）");
+    ok(/if \(\$OpenOutbox\)/.test(psSrc), "受けたあと、実際に開いている");
+
+    // 🔴 .cs を直してビルドを忘れると、配るのは古いアイコンのまま。機械で見る。
+    const exe = path.join(__dirname, "..", "..", "tray", "MrDropTray.exe");
+    if (!fs.existsSync(exe)) { ok(true, "MrDropTray.exe が無い"); return; }
+    ok(fs.readFileSync(exe).includes(Buffer.from("送信箱を開く", "utf16le")),
+       "🔴 作り直した MrDropTray.exe にも入っている（build\\build-tray.ps1 を忘れていない）");
   });
 
   // 🔴 設定ファイルはプログラムの隣に置かない（本人が実際につまずいた 2026-09-12）。

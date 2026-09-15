@@ -2,6 +2,7 @@
 #
 #   -ChooseInbox    保存先をフォルダ選択で変える（Mac のメニュー「保存先を変える…」と同じ）
 #   -OpenInbox      保存先をエクスプローラで開く（Mac の「保存先を開く」と同じ）
+#   -OpenOutbox     送信箱をエクスプローラで開く（iPhone へ渡す物を置く場所）
 #   -ChooseName     この PC の名前を変える（iPhone の一覧に出る名前）
 #   -MakeResident   窓なしで常駐させる（install-windows.ps1 を呼ぶ。管理者へ昇格する）
 #   -Uninstall      入れる前に戻す（同上。届いたファイルは消さない）
@@ -9,6 +10,9 @@
 #   -Pause          終わりに Enter を待つ。スタートメニューのショートカットから呼ぶとき用
 #                   （.bat には pause があるが、ショートカットは powershell を直接呼ぶので
 #                    これが無いと画面が一瞬で閉じて何も読めない）
+#   -PrintDefaults  既定の置き場所を JSON で吐いて終わる（買った人は使わない）。
+#                   server/test/config.test.js が、node 側の既定と食い違っていないかを
+#                   これで突き合わせる。**手で揃えるのは必ずまた外れる**ため
 #
 # 🔴 隣の .bat とスタートメニューのショートカットから呼ばれる前提。**日本語はここに置く**
 #    （.bat は cmd が CP932 で読むので非ASCII を書けない。だから案内文は全部こちら側）。
@@ -18,11 +22,13 @@
 param(
   [switch]$ChooseInbox,
   [switch]$OpenInbox,
+  [switch]$OpenOutbox,
   [switch]$ChooseName,
   [switch]$MakeResident,
   [switch]$Uninstall,
   [switch]$FromTray,
-  [switch]$Pause
+  [switch]$Pause,
+  [switch]$PrintDefaults
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,21 +58,45 @@ function Fail ($m) {
 
 # ── 設定の読み書き ────────────────────────────────────────
 # 🔴 config.json が無いこともある（一度も起動していないとき）。既定を組み立てて作る。
+# 🔴 server/lib/config.js の defaults() と必ず同じ答えにする。ここがずれると、
+#    一度も起動していない人が先に「保存先を変える.bat」を押したとき、
+#    間違った既定が config.json に書き込まれて固定される（Mac 側の指摘 2026-09-12）。
+#    手で揃えるのは必ずまた外れるので、`-PrintDefaults` で機械が突き合わせています。
+#
+# 🔴 置き場所を決め打ちしないこと（2026-09-15・買った人の報告で発覚）。
+#    OneDrive の「PC のフォルダーのバックアップ」が入っていると、本当のデスクトップは
+#    %USERPROFILE%\OneDrive\デスクトップ へ移っていて、%USERPROFILE%\Desktop は
+#    **画面に出てこない抜け殻**として残る。そこに送信箱を作ると、買った人のデスクトップには
+#    何も現れない。しかもエラーは一つも出ないので、こちらからは気づけない。
+function Get-Defaults {
+  $desk = [Environment]::GetFolderPath('DesktopDirectory')
+  if (-not $desk) { $desk = Join-Path $env:USERPROFILE "Desktop" }
+
+  # ダウンロードは .NET が知らないので、既知フォルダの ID でレジストリから読む。
+  $dl = $null
+  try {
+    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'
+    $dl = Expand-Path (Get-ItemProperty -LiteralPath $key -ErrorAction Stop).'{374DE290-123F-4565-9164-39C4925E467B}'
+  } catch { }
+  if (-not $dl -or $dl.Contains("%") -or -not [System.IO.Path]::IsPathRooted($dl)) {
+    $dl = Join-Path $env:USERPROFILE "Downloads"
+  }
+
+  return [pscustomobject]@{
+    port   = 48630
+    inbox  = $dl
+    outbox = Join-Path $desk "Mr.Drop送信箱"
+    name   = ""
+    token  = ""
+  }
+}
+
 function Read-Config {
   if (Test-Path -LiteralPath $CfgFile) {
     try { return Get-Content -LiteralPath $CfgFile -Raw -Encoding UTF8 | ConvertFrom-Json }
     catch { Fail "config.json が読めません（中身が壊れています）: $CfgFile" }
   }
-  return [pscustomobject]@{
-    port   = 48630
-    # 🔴 server/lib/config.js の DEFAULTS と必ず同じにする。ここがずれると、
-    #    一度も起動していない人が先に「保存先を変える.bat」を押したとき、
-    #    間違った既定が config.json に書き込まれて固定される（Mac 側の指摘 2026-09-12）。
-    inbox  = "%USERPROFILE%\Downloads"
-    outbox = "%USERPROFILE%\Desktop\Mr.Drop送信箱"
-    name   = ""
-    token  = ""
-  }
+  return Get-Defaults
 }
 
 function Write-Config ($cfg) {
@@ -85,7 +115,15 @@ function Expand-Path ($p) {
 }
 
 function Get-InboxPath {
-  return Expand-Path (Read-Config).inbox
+  $p = Expand-Path (Read-Config).inbox
+  if (-not $p) { $p = (Get-Defaults).inbox }   # 設定が欠けていても迷子にしない
+  return $p
+}
+
+function Get-OutboxPath {
+  $p = Expand-Path (Read-Config).outbox
+  if (-not $p) { $p = (Get-Defaults).outbox }
+  return $p
 }
 
 # 管理者に昇格して install-windows.ps1 を呼ぶ。-MakeResident と -Uninstall の共通部分。
@@ -164,6 +202,15 @@ function Restart-Tray {
   }
 }
 
+# ── 既定を吐くだけ（テスト用。買った人は使わない） ────────
+# 🔴 node 側の既定と食い違っていないかを、server/test/config.test.js が読みます。
+#    日本語（…\OneDrive\デスクトップ）が化けないよう、UTF-8 で出すこと。
+if ($PrintDefaults) {
+  [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+  (Get-Defaults) | ConvertTo-Json -Compress
+  exit 0
+}
+
 # ── 保存先を変える ────────────────────────────────────────
 if ($ChooseInbox) {
   Head "保存先を変える"
@@ -220,6 +267,17 @@ if ($ChooseInbox) {
 # ── 保存先を開く ──────────────────────────────────────────
 if ($OpenInbox) {
   $p = Get-InboxPath
+  if (-not (Test-Path -LiteralPath $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
+  Start-Process explorer.exe $p
+  exit 0
+}
+
+# ── 送信箱を開く ──────────────────────────────────────────
+# 🔴 送信箱はデスクトップの中ですが、**デスクトップの場所は人によって違います**
+#    （OneDrive の「PC のフォルダーのバックアップ」を入れていると別の場所にあります）。
+#    2026-09-15 に買った人が「デスクトップに出てこない」で詰まりました。ここが逃げ道です。
+if ($OpenOutbox) {
+  $p = Get-OutboxPath
   if (-not (Test-Path -LiteralPath $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
   Start-Process explorer.exe $p
   exit 0

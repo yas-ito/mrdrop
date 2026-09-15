@@ -12,11 +12,11 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { load, defaultFile } = require("./lib/config");
+const { load, defaultFile, fixStaleOutbox } = require("./lib/config");
 const { createServer } = require("./lib/http");
 const { Responder, browse, localIPv4s } = require("./lib/mdns");
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.1";
 const ROOT = path.join(__dirname, "..");
 // 記録の置き場所。Windows は %LOCALAPPDATA%\MrDrop、Mac は ~/Library/Logs/MrDrop。
 // 🔴 Mac で os.tmpdir() に置くと 3 日で掃除され、問い合わせのときに読めなくなる（Mac 版アプリの
@@ -91,6 +91,11 @@ async function main() {
   if (args.port) cfg.port = args.port;
   cfg.version = VERSION;
 
+  // 🔴 フォルダを作る前に呼ぶ。作ってしまうと、抜け殻の方に空の送信箱が残る。
+  //    1.0.0 は %USERPROFILE%\Desktop を決め打ちしていたので、OneDrive でデスクトップを
+  //    移している人の送信箱は、画面に出てこない場所を指したままになっている。
+  const movedOutbox = fixStaleOutbox(cfg, cfg.file);
+
   fs.mkdirSync(cfg.inbox, { recursive: true });
   fs.mkdirSync(cfg.outbox, { recursive: true });
 
@@ -131,6 +136,13 @@ async function main() {
   log(line);
   log(`  保存先  ${cfg.inbox}`);
   log(`  送信箱  ${cfg.outbox}`);
+  if (movedOutbox) {
+    log(`  🔵 送信箱を、デスクトップの本当の場所へ移しました（${movedOutbox.moved} 個）`);
+    log(`     前は ${movedOutbox.from} でした（画面に出てこないフォルダです）`);
+    if (movedOutbox.left) {
+      log(`     ⚠️ ${movedOutbox.left} 個は同じ名前が先にあったので、前の場所に残してあります`);
+    }
+  }
   log(line);
   log("  iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:");
   log(`    http://${hostLabel}.local:${cfg.port}`);
