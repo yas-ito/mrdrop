@@ -16,7 +16,7 @@ const { load, defaultFile, fixStaleOutbox } = require("./lib/config");
 const { createServer } = require("./lib/http");
 const { Responder, browse, localIPv4s } = require("./lib/mdns");
 
-const VERSION = "1.0.2";
+const VERSION = "1.0.3";
 const ROOT = path.join(__dirname, "..");
 // 記録の置き場所。Windows は %LOCALAPPDATA%\MrDrop、Mac は ~/Library/Logs/MrDrop。
 // 🔴 Mac で os.tmpdir() に置くと 3 日で掃除され、問い合わせのときに読めなくなる（Mac 版アプリの

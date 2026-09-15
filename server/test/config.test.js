@@ -218,7 +218,7 @@ module.exports = async function (t) {
   // 🔴 送信箱はデスクトップの中だが、**デスクトップの場所は人によって違う**。
   //    見つからない人のために、常駐アイコンから必ず開けるようにした（2026-09-15）。
   //    呼ぶ側（常駐アイコン）と受ける側（.ps1）が食い違うと、押しても何も起きない。
-  suite("送信箱 — 常駐アイコンから開ける", () => {
+  suite("送信箱 — 常駐アイコンから開ける・変えられる", () => {
     const cs = path.join(__dirname, "..", "..", "tray", "MrDropTray.cs");
     const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
     if (!fs.existsSync(cs) || !fs.existsSync(ps1)) { ok(true, "元のソースが無い（配布物の中では省かれる）"); return; }
@@ -228,11 +228,86 @@ module.exports = async function (t) {
     ok(/\[switch\]\$OpenOutbox/.test(psSrc), "🔴 .ps1 が -OpenOutbox を受ける（押して何も起きないのが一番こまる）");
     ok(/if \(\$OpenOutbox\)/.test(psSrc), "受けたあと、実際に開いている");
 
+    // 🔴 場所も変えられる（本人の指示 2026-09-15）。中身の引っ越しは .ps1 に一本化。
+    ok(/ToolStripMenuItem\("送信箱を変える\.\.\."[\s\S]{0,60}ChangeOutbox/.test(csSrc),
+       "メニューに「送信箱を変える...」がある");
+    ok(/-ChooseOutbox -FromTray/.test(csSrc), "変えたあとに常駐を入れ直す（-FromTray）");
+    ok(/\[switch\]\$ChooseOutbox/.test(psSrc), "🔴 .ps1 が -ChooseOutbox を受ける");
+    ok(/if \(\$ChooseOutbox\)/.test(psSrc), "受けたあと、実際に選ばせている");
+    ok(/Move-OutboxContents \$now \$new/.test(psSrc), "🔴 中身も一緒に引っ越している");
+    ok(/Test-SamePlace \$new \(Get-InboxPath\)/.test(psSrc),
+       "🔴 保存先と同じ場所は断っている（届いた物が全部見えてしまう）");
+
     // 🔴 .cs を直してビルドを忘れると、配るのは古いアイコンのまま。機械で見る。
     const exe = path.join(__dirname, "..", "..", "tray", "MrDropTray.exe");
     if (!fs.existsSync(exe)) { ok(true, "MrDropTray.exe が無い"); return; }
-    ok(fs.readFileSync(exe).includes(Buffer.from("送信箱を開く", "utf16le")),
+    const bin = fs.readFileSync(exe);
+    ok(bin.includes(Buffer.from("送信箱を開く", "utf16le")),
        "🔴 作り直した MrDropTray.exe にも入っている（build\\build-tray.ps1 を忘れていない）");
+    ok(bin.includes(Buffer.from("送信箱を変える...", "utf16le")), "🔴 「送信箱を変える...」も入っている");
+  });
+
+  // 🔴 送信箱の場所を変えられるようにした（本人の指示 2026-09-15）。
+  //    **中身も一緒に引っ越す**こと。場所だけ変えると前の送信箱のファイルが置き去りになり、
+  //    説明書の「送信箱は動かさないでください」と食い違う。
+  //    🔴 ファイルを失いかねない処理なので、.ps1 の引っ越しを**直接呼んで**固める。
+  suite("送信箱を変える — 中身の引っ越し", () => {
+    const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
+    if (!WIN || !fs.existsSync(ps1)) { ok(true, "Windows でだけ測れます"); return; }
+    const move = (from, to) => JSON.parse(execFileSync("powershell", [
+      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps1,
+      "-MoveOutboxFrom", from, "-MoveOutboxTo", to,
+    ], { stdio: ["ignore", "pipe", "ignore"], timeout: 60000, windowsHide: true }).toString("utf8"));
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mrdrop-move-"));
+    const link = path.join(dir, "別名");
+    try {
+      // ① ふつうに引っ越す
+      const from = path.join(dir, "前の送信箱");
+      const to = path.join(dir, "新しい送信箱");
+      fs.mkdirSync(from, { recursive: true });
+      fs.writeFileSync(path.join(from, "渡したい書類.txt"), "中身", "utf8");
+      fs.mkdirSync(path.join(from, "フォルダごと"));
+      fs.writeFileSync(path.join(from, "フォルダごと", "中の物.txt"), "中身", "utf8");
+
+      const r1 = move(from, to);
+      eq(r1.moved, 2, "中身が引っ越した（2 個）");
+      eq(r1.left, 0, "見送った物は無い");
+      ok(r1.removed, "空になった前の送信箱は片付けた");
+      ok(fs.existsSync(path.join(to, "渡したい書類.txt")), "ファイルが新しい場所にある");
+      ok(fs.existsSync(path.join(to, "フォルダごと", "中の物.txt")), "フォルダごと移っている");
+      ok(!fs.existsSync(from), "前の場所は残っていない");
+
+      // ② 同じ名前が先にあったら上書きしない
+      const a = path.join(dir, "a");
+      const b = path.join(dir, "b");
+      fs.mkdirSync(a); fs.mkdirSync(b);
+      fs.writeFileSync(path.join(a, "同じ名前.txt"), "あとから来た方", "utf8");
+      fs.writeFileSync(path.join(b, "同じ名前.txt"), "先にあった方", "utf8");
+      fs.writeFileSync(path.join(a, "ぶつからない物.txt"), "移る", "utf8");
+
+      const r2 = move(a, b);
+      eq(r2.moved, 1, "ぶつからない物だけ移った");
+      eq(r2.left, 1, "同じ名前は見送った");
+      ok(!r2.removed, "🔴 残った物があるので、前の場所は消さない");
+      eq(fs.readFileSync(path.join(b, "同じ名前.txt"), "utf8"), "先にあった方", "🔴 上書きしない");
+      ok(fs.existsSync(path.join(a, "同じ名前.txt")), "🔴 移せなかった物は消さない");
+
+      // ③ 🔴 名前が2つあるだけの同じ場所（ジャンクション）。ここで消したら大事故
+      const real = path.join(dir, "実体");
+      fs.mkdirSync(real);
+      fs.writeFileSync(path.join(real, "大事な物.txt"), "消えたら困る", "utf8");
+      fs.symlinkSync(real, link, "junction");
+
+      const r3 = move(real, link);
+      ok(r3.same, "同じ場所だと気づいた");
+      eq(r3.moved, 0, "何も動かしていない");
+      ok(!r3.removed, "🔴 消していない");
+      eq(fs.readFileSync(path.join(real, "大事な物.txt"), "utf8"), "消えたら困る", "🔴 中身は無事");
+    } finally {
+      try { fs.rmSync(link, { force: true }); } catch { /* ジャンクションを先に外す */ }
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   // 🔴 どの版が入っているかは、入れ替えのたびに必ず要る（1.0.1 と 1.0.2 で実際に困った）。

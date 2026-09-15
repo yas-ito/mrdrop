@@ -37,7 +37,7 @@ node server/mrdrop.js
 こう出ます。
 
 ```
-  Mr.Drop 1.0.2   MY-PC
+  Mr.Drop 1.0.3   MY-PC
 ────────────────────────────────────────────────────
   保存先  C:\Users\<あなた>\Downloads
   送信箱  C:\Users\<あなた>\Desktop\Mr.Drop送信箱

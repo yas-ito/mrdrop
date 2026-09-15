@@ -3,6 +3,7 @@
 #   -ChooseInbox    保存先をフォルダ選択で変える（Mac のメニュー「保存先を変える…」と同じ）
 #   -OpenInbox      保存先をエクスプローラで開く（Mac の「保存先を開く」と同じ）
 #   -OpenOutbox     送信箱をエクスプローラで開く（iPhone へ渡す物を置く場所）
+#   -ChooseOutbox   送信箱をフォルダ選択で変える（**中身も一緒に引っ越します**）
 #   -ChooseName     この PC の名前を変える（iPhone の一覧に出る名前）
 #   -MakeResident   窓なしで常駐させる（install-windows.ps1 を呼ぶ。管理者へ昇格する）
 #   -Uninstall      入れる前に戻す（同上。届いたファイルは消さない）
@@ -13,6 +14,10 @@
 #   -PrintDefaults  既定の置き場所を JSON で吐いて終わる（買った人は使わない）。
 #                   server/test/config.test.js が、node 側の既定と食い違っていないかを
 #                   これで突き合わせる。**手で揃えるのは必ずまた外れる**ため
+#   -MoveOutboxFrom / -MoveOutboxTo
+#                   送信箱の中身を引っ越すだけ（買った人は使わない）。
+#                   🔴 **ファイルを失いかねない処理なので、テストから直接呼んで固めている**
+#                   （server/test/config.test.js）。画面は出さず、結果を JSON で吐く
 #
 # 🔴 隣の .bat とスタートメニューのショートカットから呼ばれる前提。**日本語はここに置く**
 #    （.bat は cmd が CP932 で読むので非ASCII を書けない。だから案内文は全部こちら側）。
@@ -27,8 +32,11 @@ param(
   [switch]$MakeResident,
   [switch]$Uninstall,
   [switch]$FromTray,
+  [switch]$ChooseOutbox,
   [switch]$Pause,
-  [switch]$PrintDefaults
+  [switch]$PrintDefaults,
+  [string]$MoveOutboxFrom,
+  [string]$MoveOutboxTo
 )
 
 $ErrorActionPreference = "Stop"
@@ -99,6 +107,13 @@ function Read-Config {
   return Get-Defaults
 }
 
+# 🔴 古い config.json には、その項目がまだ無いことがある。PSCustomObject は
+#    **無いプロパティに代入するとエラーになる**ので、無ければ足してから入れる。
+function Set-Prop ($obj, $name, $value) {
+  if ($obj.PSObject.Properties.Name -contains $name) { $obj.$name = $value }
+  else { $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value }
+}
+
 function Write-Config ($cfg) {
   # 🔴 Set-Content の既定は CP932。config.js は UTF-8 として読むので、必ず UTF-8 で書く。
   #    BOM は付けない（JSON.parse が BOM を嫌う）。
@@ -124,6 +139,60 @@ function Get-OutboxPath {
   $p = Expand-Path (Read-Config).outbox
   if (-not $p) { $p = (Get-Defaults).outbox }
   return $p
+}
+
+# 🔴 2つのパスが**同じ場所**かどうか。文字列では見抜けません
+#    （ジャンクション・大文字小文字・別名。2026-09-15 に node 側で実際に踏みました）。
+#    印を1つ置いて、もう片方から見えるかで確かめます。**これがいちばん確実**です。
+function Test-SamePlace ($a, $b) {
+  if (-not (Test-Path -LiteralPath $a) -or -not (Test-Path -LiteralPath $b)) { return $false }
+  $name = ".mrdrop-same-" + [System.IO.Path]::GetRandomFileName()
+  $probe = Join-Path $a $name
+  try {
+    [System.IO.File]::WriteAllText($probe, "")
+    return (Test-Path -LiteralPath (Join-Path $b $name))
+  } catch {
+    return $false
+  } finally {
+    try { Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue } catch { }
+  }
+}
+
+# 送信箱の中身を引っ越す。
+#
+# 🔴 **上書きしない**（この道具の決まり）。同じ名前が先にあったら、残して見送る。
+# 🔴 **全部移せたときだけ**、空になった元を片付ける。1つでも残っていたら元も残す。
+# 🔴 **同じ場所なら何もしない。**ここを見落とすと「引っ越したつもりで本物を消す」
+#    （node 側の fixStaleOutbox で実際に踏んだ）。
+function Move-OutboxContents ($from, $to) {
+  $moved = 0
+  $left = 0
+  $same = $false
+  $removed = $false
+
+  if (Test-Path -LiteralPath $from) {
+    New-Item -ItemType Directory -Force -Path $to | Out-Null
+    if (Test-SamePlace $from $to) {
+      $same = $true
+    } else {
+      foreach ($item in @(Get-ChildItem -LiteralPath $from -Force)) {
+        $dest = Join-Path $to $item.Name
+        if (Test-Path -LiteralPath $dest) { $left++; continue }     # 🔴 上書きしない
+        try {
+          Move-Item -LiteralPath $item.FullName -Destination $dest -ErrorAction Stop
+          $moved++
+        } catch {
+          $left++
+        }
+      }
+      if ($left -eq 0) {
+        # 🔴 Remove-Item は中身があると確認を求めて止まる（画面の無い所では固まる）。
+        #    空のときだけ消したいので .NET で消す（空でなければ例外になって何も起きない）。
+        try { [System.IO.Directory]::Delete($from); $removed = $true } catch { }
+      }
+    }
+  }
+  return [pscustomobject]@{ moved = $moved; left = $left; same = $same; removed = $removed }
 }
 
 # 管理者に昇格して install-windows.ps1 を呼ぶ。-MakeResident と -Uninstall の共通部分。
@@ -211,6 +280,15 @@ if ($PrintDefaults) {
   exit 0
 }
 
+# ── 引っ越しだけ走らせる（テスト用。買った人は使わない） ──
+# 🔴 ファイルを失いかねない処理なので、テストから直接呼んで固めています。
+if ($MoveOutboxFrom) {
+  [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+  if (-not $MoveOutboxTo) { Fail "-MoveOutboxTo も要ります。" }
+  (Move-OutboxContents $MoveOutboxFrom $MoveOutboxTo) | ConvertTo-Json -Compress
+  exit 0
+}
+
 # ── 保存先を変える ────────────────────────────────────────
 if ($ChooseInbox) {
   Head "保存先を変える"
@@ -252,7 +330,7 @@ if ($ChooseInbox) {
   }
 
   $cfg = Read-Config
-  $cfg.inbox = $new
+  Set-Prop $cfg "inbox" $new
   Write-Config $cfg
 
   Write-Host ""
@@ -280,6 +358,87 @@ if ($OpenOutbox) {
   $p = Get-OutboxPath
   if (-not (Test-Path -LiteralPath $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
   Start-Process explorer.exe $p
+  exit 0
+}
+
+# ── 送信箱を変える ────────────────────────────────────────
+# 🔴 **中身も一緒に引っ越すこと。**場所だけ変えると、前の送信箱のファイルが置き去りになる。
+#    取扱説明書に「送信箱は動かさないでください」と書いてあるのに、設定から変えたときだけ
+#    置き去りになるのでは筋が通らない。
+# 🔴 **保存先と同じ場所は断る。**送信箱の中身は**同じ Wi-Fi から一覧できる**ので、
+#    同じにすると、iPhone から届いたものが全部見えてしまう。
+if ($ChooseOutbox) {
+  Head "送信箱を変える"
+  $now = Get-OutboxPath
+  Say "いまの送信箱: $now"
+  Write-Host ""
+  Say "iPhone へ渡したい物を置くフォルダを選びます。"
+  Say "いまの中身は、選んだ先へ一緒に引っ越します。"
+  Write-Host ""
+  Warn "ここに置いた物は、同じ Wi-Fi の人から一覧できます。"
+  Warn "デスクトップやドキュメントを丸ごと選ぶと、置いてある物が全部見えます。"
+
+  Add-Type -AssemblyName System.Windows.Forms
+  $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+  $dlg.Description  = "iPhone へ渡す物を置くフォルダを選んでください（いまの中身も一緒に引っ越します）"
+  $dlg.SelectedPath = if (Test-Path -LiteralPath $now) { $now } else { [Environment]::GetFolderPath('DesktopDirectory') }
+  $dlg.ShowNewFolderButton = $true
+
+  # 🔴 ShowDialog は STA スレッドでないと黙って失敗する（黙って何も起きないのが最悪）。
+  if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+    Fail "フォルダ選択の画面を出せません（STA ではありません）。`n   タスクバーの雫のメニューから実行してください。"
+  }
+
+  if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+    Write-Host ""
+    Say "やめました。送信箱は変えていません。"
+    Wait-IfAsked
+    exit 0
+  }
+
+  $new = $dlg.SelectedPath
+  if (-not (Test-Path -LiteralPath $new)) { Fail "そのフォルダが見つかりません: $new" }
+
+  # 書けるフォルダかを実際に試す。渡す段になって失敗するより、いま分かった方がよい。
+  $probe = Join-Path $new ".mrdrop-write-test"
+  try {
+    [System.IO.File]::WriteAllText($probe, "ok")
+    Remove-Item -LiteralPath $probe -Force
+  } catch {
+    Fail "そのフォルダには書き込めません: $new`n   別のフォルダを選んでください。"
+  }
+
+  # 🔴 保存先と同じ場所にはできない。文字列では見抜けないので、印を置いて確かめる。
+  if (Test-SamePlace $new (Get-InboxPath)) {
+    Fail ("そこは保存先（iPhone から届いたものが入る所）と同じ場所です。`n" +
+          "   送信箱の中身は同じ Wi-Fi から一覧できるので、届いた物が全部見えてしまいます。`n" +
+          "   別のフォルダを選んでください。")
+  }
+
+  if (Test-SamePlace $new $now) {
+    Write-Host ""
+    Say "そこは、いまの送信箱と同じ場所です。何も変えていません。"
+    Wait-IfAsked
+    exit 0
+  }
+
+  $r = Move-OutboxContents $now $new
+
+  $cfg = Read-Config
+  Set-Prop $cfg "outbox" $new
+  Write-Config $cfg
+
+  Write-Host ""
+  Say "送信箱を変えました: $new"
+  if ($r.moved -gt 0) { Say "中身を $($r.moved) 個、引っ越しました。" }
+  if ($r.left -gt 0) {
+    Warn "$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:"
+    Say "  $now"
+  }
+  if (Restart-Tray) { Say "常駐を入れ直したので、もう効いています。" }
+  else { Warn "動いていなければ、次に Mr.Drop を開いたときから効きます。" }
+  Write-Host ""
+  Wait-IfAsked
   exit 0
 }
 

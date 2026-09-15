@@ -95,6 +95,7 @@ namespace MrDrop
             //    「送信箱がデスクトップに出てこない」で詰まった。ここから必ず開ける。
             menu.Items.Add(new ToolStripMenuItem("送信箱を開く", null, (s, e) => RunSettings("-OpenOutbox", false)));
             menu.Items.Add(new ToolStripMenuItem("保存先を変える...", null, (s, e) => ChangeInbox()));
+            menu.Items.Add(new ToolStripMenuItem("送信箱を変える...", null, (s, e) => ChangeOutbox()));
             menu.Items.Add(new ToolStripMenuItem("この PC の名前を変える...", null, (s, e) => ChangeName()));
             menu.Items.Add(new ToolStripMenuItem("取扱説明書", null, (s, e) => OpenManual()));
             menu.Items.Add(startupItem);
@@ -279,6 +280,14 @@ namespace MrDrop
             // 🔴 保存先は起動したときにしか読まない。変えたら**こちらで入れ直す**。
             //    前は .ps1 がタスクを入れ直していたが、いまは本体を抱えているのは私。
             RunSettings("-ChooseInbox -FromTray", true);
+            RestartServer();
+        }
+
+        // 🔴 送信箱も同じ。**中身は .ps1 が一緒に引っ越す**（場所だけ変えると置き去りになる）。
+        //    引っ越しの決まりは向こうに一本化してある。ここには持たない。
+        void ChangeOutbox()
+        {
+            RunSettings("-ChooseOutbox -FromTray", true);
             RestartServer();
         }
 
