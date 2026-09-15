@@ -31,8 +31,11 @@ enum Remux {
     ///   「unknown error」としか言わない。**本体は必ず `MrDrop.describe` を渡すこと**
     ///   （領域・番号・内側のエラーまで出る。09-15 の原因特定は、これが記録に残っていたから出来た）。
     /// - Returns: 成功したら mp4 の場所（**元のファイルは消す**）。駄目なら `.keptAsIs`。
+    /// - Parameter onProgress: 詰め替えの進み具合（0.0〜1.0）。数GB の動画は数秒かかるので、
+    ///   🔴 **呼ぶ側が画面に出せるように渡す**（黙って固まって見えるのがいちばん困る）。
     static func toMP4(_ url: URL, taken: Date?, log: (String) -> Void,
-                      describe: (Error) -> String = { $0.localizedDescription }) async -> Result {
+                      describe: (Error) -> String = { $0.localizedDescription },
+                      onProgress: (@Sendable (Double) -> Void)? = nil) async -> Result {
         guard url.pathExtension.lowercased() != "mp4" else { return .done(url) }
         let asset = AVURLAsset(url: url)
 
@@ -63,7 +66,7 @@ enum Remux {
         //    書き出しは使い捨てなので、やり直すときは作り直す（使い回すと必ず落ちる）。
         for attempt in 1...2 {
             if let out = await passthrough(asset, from: url, taken: taken, attempt: attempt,
-                                           log: log, describe: describe) {
+                                           log: log, describe: describe, onProgress: onProgress) {
                 try? FileManager.default.removeItem(at: url)     // 元は要らない
                 return .done(out)
             }
@@ -73,7 +76,8 @@ enum Remux {
 
     /// 1回分の書き出し。やり直せるように切り出してある。
     private static func passthrough(_ asset: AVURLAsset, from url: URL, taken: Date?, attempt: Int,
-                                    log: (String) -> Void, describe: (Error) -> String) async -> URL? {
+                                    log: (String) -> Void, describe: (Error) -> String,
+                                    onProgress: (@Sendable (Double) -> Void)?) async -> URL? {
         guard let ex = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
             log("🔴 パススルーの書き出しを作れませんでした（\(attempt)回目）")
             return nil
@@ -84,9 +88,20 @@ enum Remux {
         ex.outputFileType = .mp4
         if let taken { ex.metadata = FileDate.creationMetadata(taken) }   // 🔴 これが無いと日付が消える
         let started = Date()
+        // 進み具合を 0.2 秒ごとに知らせる。書き出しが終わったら止める
+        let reporter: Task<Void, Never>? = onProgress.map { report in
+            Task {
+                while !Task.isCancelled {
+                    report(Double(ex.progress))
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                }
+            }
+        }
         await withCheckedContinuation { cont in
             ex.exportAsynchronously { cont.resume() }
         }
+        reporter?.cancel()
+        onProgress?(1.0)
         guard ex.status == .completed else {
             let why = ex.error.map(describe) ?? "理由不明"
             log("🔴 詰め替え失敗（\(attempt)回目・元のまま送ります）: \(why)")
