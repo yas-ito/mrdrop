@@ -234,7 +234,11 @@ module.exports = async function (t) {
     ok(/-ChooseOutbox -FromTray/.test(csSrc), "変えたあとに常駐を入れ直す（-FromTray）");
     ok(/\[switch\]\$ChooseOutbox/.test(psSrc), "🔴 .ps1 が -ChooseOutbox を受ける");
     ok(/if \(\$ChooseOutbox\)/.test(psSrc), "受けたあと、実際に選ばせている");
-    ok(/Move-OutboxContents \$now \$new/.test(psSrc), "🔴 中身も一緒に引っ越している");
+    ok(/Move-OutboxContents \$now \$new/.test(psSrc), "中身を引っ越す道がある");
+    // 🔴 2026-09-15 の事故。中身は**黙って運ばない**。
+    ok(/MessageBox\]::Show/.test(psSrc), "🔴 中身を移す前に必ず聞いている");
+    ok(/if \(Test-StandardFolder \$new\)/.test(psSrc), "🔴 大事なフォルダそのものは選ばせない");
+    ok(/if \(Test-StandardFolder \$now\)/.test(psSrc), "🔴 前の送信箱が大事なフォルダなら、中身を動かさない");
     ok(/Test-SamePlace \$new \(Get-InboxPath\)/.test(psSrc),
        "🔴 受信先と同じ場所は断っている（届いた物が全部見えてしまう）");
 
@@ -335,6 +339,34 @@ module.exports = async function (t) {
     } finally {
       try { fs.rmSync(link, { force: true }); } catch { /* ジャンクションを先に外す */ }
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // 🔴 2026-09-15 の事故の芯。送信箱に「ビデオ」を選び、そのあと「デスクトップ」に変えたら、
+  //    **ビデオの中身7つが全部デスクトップへ移った**。送信箱に選ばれたフォルダの中身は
+  //    「送信箱の中身」ではなく**買った人の持ち物**で、こちらの都合で動かしてよい物ではなかった。
+  //    そもそも大事なフォルダそのものは、**中身が全部 同じ Wi-Fi から見える**ので選ばせてはいけない。
+  suite("送信箱を変える — 大事なフォルダそのものは選ばせない", () => {
+    const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
+    if (!WIN || !fs.existsSync(ps1)) { ok(true, "Windows でだけ測れます"); return; }
+    const isStd = (p) => JSON.parse(execFileSync("powershell", [
+      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps1, "-IsStandardFolder", p,
+    ], { stdio: ["ignore", "pipe", "ignore"], timeout: 60000, windowsHide: true }).toString("utf8")).standard;
+
+    const home = os.homedir();
+    const desk = askWindows().desktop || path.join(home, "Desktop");
+    ok(isStd(desk), "🔴 デスクトップそのものは断る");
+    ok(isStd(path.join(home, "Videos")), "🔴 ビデオそのものは断る（今回これで事故った）");
+    ok(isStd(path.join(home, "Downloads")), "🔴 ダウンロードそのものは断る");
+    ok(isStd(home), "🔴 ユーザーフォルダそのものは断る");
+    ok(isStd(path.parse(home).root), "🔴 ドライブの根っこは断る");
+
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mrdrop-std-"));
+    try {
+      ok(!isStd(tmp), "ふつうのフォルダは選べる");
+      ok(!isStd(path.join(desk, OUTBOX)), "デスクトップの中の送信箱は選べる");
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
 

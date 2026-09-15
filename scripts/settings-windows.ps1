@@ -36,7 +36,8 @@ param(
   [switch]$Pause,
   [switch]$PrintDefaults,
   [string]$MoveOutboxFrom,
-  [string]$MoveOutboxTo
+  [string]$MoveOutboxTo,
+  [string]$IsStandardFolder
 )
 
 $ErrorActionPreference = "Stop"
@@ -156,6 +157,40 @@ function Test-SamePlace ($a, $b) {
   } finally {
     try { Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue } catch { }
   }
+}
+
+# 🔴 Windows の大事なフォルダ「そのもの」かどうか（2026-09-15・本人の機械で事故を起こした）。
+#
+#    送信箱に「ビデオ」を選び、そのあと「デスクトップ」に変えたら、
+#    **ビデオの中身7つが全部デスクトップへ移った**。買った人の持ち物を、
+#    こちらの都合（送信箱の引っ越し）で動かしてしまった。
+#    そもそも**中身が全部 同じ Wi-Fi から一覧できる**ので、選ばせてはいけない場所。
+function Test-StandardFolder ($p) {
+  if (-not $p) { return $false }
+  try { $full = [System.IO.Path]::GetFullPath($p) } catch { return $false }
+
+  # ドライブの根っこ（C:\ など）
+  $root = [System.IO.Path]::GetPathRoot($full)
+  if ($full.TrimEnd('\') -eq $root.TrimEnd('\')) { return $true }
+
+  $list = @()
+  foreach ($n in @('DesktopDirectory', 'MyDocuments', 'MyPictures', 'MyVideos', 'MyMusic', 'UserProfile')) {
+    $v = [Environment]::GetFolderPath($n)
+    if ($v) { $list += $v }
+  }
+  # ダウンロードは .NET が知らないので、既知フォルダの ID でレジストリから読む
+  try {
+    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'
+    $dl = Expand-Path (Get-ItemProperty -LiteralPath $key -ErrorAction Stop).'{374DE290-123F-4565-9164-39C4925E467B}'
+    if ($dl) { $list += $dl }
+  } catch { }
+  if ($env:OneDrive) { $list += $env:OneDrive }
+
+  foreach ($s in $list) {
+    # 🔴 文字列では見抜けない（ジャンクション・別名）。印を置いて確かめる。
+    if (Test-SamePlace $full $s) { return $true }
+  }
+  return $false
 }
 
 # 送信箱の中身を引っ越す。
@@ -289,6 +324,13 @@ if ($MoveOutboxFrom) {
   exit 0
 }
 
+# 🔴 「大事なフォルダそのものか」の判定も、テストから直接呼んで固めています（買った人は使わない）。
+if ($IsStandardFolder) {
+  [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+  (@{ standard = [bool](Test-StandardFolder $IsStandardFolder) }) | ConvertTo-Json -Compress
+  exit 0
+}
+
 # ── 受信先を変える ────────────────────────────────────────
 if ($ChooseInbox) {
   Head "受信先を変える"
@@ -399,6 +441,16 @@ if ($ChooseOutbox) {
   $new = $dlg.SelectedPath
   if (-not (Test-Path -LiteralPath $new)) { Fail "そのフォルダが見つかりません: $new" }
 
+  # 🔴 Windows の大事なフォルダ「そのもの」は選ばせない（2026-09-15 の事故）。
+  #    ・中に置いてある物が全部、同じ Wi-Fi から一覧できてしまう
+  #    ・そこを送信箱にすると、次に変えたとき**中身が丸ごと運ばれる**（実際に起きた）
+  if (Test-StandardFolder $new) {
+    Fail ("そこは Windows の大事なフォルダそのものです: $new`n" +
+          "   送信箱にすると、その中に置いてある物が全部、同じ Wi-Fi から見えてしまいます。`n" +
+          "   その中に新しいフォルダを作って、そちらを選んでください`n" +
+          "   （フォルダを選ぶ画面の「新しいフォルダーの作成」で作れます）。")
+  }
+
   # 書けるフォルダかを実際に試す。渡す段になって失敗するより、いま分かった方がよい。
   $probe = Join-Path $new ".mrdrop-write-test"
   try {
@@ -422,7 +474,33 @@ if ($ChooseOutbox) {
     exit 0
   }
 
-  $r = Move-OutboxContents $now $new
+  # 🔴 中身は**黙って運ばない**（2026-09-15 の事故）。
+  #    送信箱に選ばれたフォルダの中身は「送信箱の中身」ではなく**買った人の持ち物**。
+  #    こちらの都合で動かしてよいものではない。数と場所を見せて、**必ず聞く**。
+  $r = $null
+  $count = 0
+  if (Test-Path -LiteralPath $now) { $count = @(Get-ChildItem -LiteralPath $now -Force).Count }
+  if ($count -gt 0) {
+    if (Test-StandardFolder $now) {
+      # 大事なフォルダが送信箱になっていた（昔の設定）。そこの中身は絶対に動かさない。
+      Write-Host ""
+      Warn "いまの送信箱は Windows の大事なフォルダそのものなので、中身は動かしません:"
+      Say "  $now"
+    } else {
+      $ans = [System.Windows.Forms.MessageBox]::Show(
+        "いまの送信箱に $count 個あります。`n`n$now`n`n新しい送信箱へ移しますか？`n`n" +
+        "「いいえ」を選ぶと、いまの場所にそのまま残します。",
+        "Mr.Drop — 中身をどうしますか",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Question)
+      if ($ans -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $r = Move-OutboxContents $now $new
+      } else {
+        Write-Host ""
+        Say "中身は動かしませんでした（いまの場所に残っています）。"
+      }
+    }
+  }
 
   $cfg = Read-Config
   Set-Prop $cfg "outbox" $new
@@ -430,8 +508,8 @@ if ($ChooseOutbox) {
 
   Write-Host ""
   Say "送信箱を変えました: $new"
-  if ($r.moved -gt 0) { Say "中身を $($r.moved) 個、引っ越しました。" }
-  if ($r.left -gt 0) {
+  if ($r -and $r.moved -gt 0) { Say "中身を $($r.moved) 個、引っ越しました。" }
+  if ($r -and $r.left -gt 0) {
     Warn "$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:"
     Say "  $now"
   }
