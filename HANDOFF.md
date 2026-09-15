@@ -52,6 +52,13 @@
 | `scripts/settings-windows.ps1` | 既定も OS に聞く。`-OpenOutbox`（送信箱を開く）と `-PrintDefaults` |
 | `tray/MrDropTray.cs` | メニューに「**送信箱を開く**」（見つからない人の逃げ道）。exe も作り直し済み |
 | `取扱説明書.html` | 更新履歴 v1.0.2・見つからないときの案内・**動かさないでの注意**・メニュー図 |
+| `scripts/install-windows.ps1` | 入れ終わったあとの案内から **URL を外した**（下） |
+
+🔵 **入れ終わったあとに URL を出すのをやめました**（本人の指摘）。1.0.0 の頃は Safari が
+唯一の入口でしたが、いまは **iPhone アプリが設定なしでこの PC を見つけます**。
+URL を見せても iPhone で手打ちさせるだけですし、**黒い画面の文字を iPhone へ渡す手立てが
+そもそもありません**。第一声は「iPhone に Mr.Drop アプリを入れてください」にしました。
+（アプリを使わない道は取扱説明書にあります。）
 
 🔵 **`reg.exe` では読めません。**出力が CP932 なので、日本語を含むパス（`…\OneDrive\デスクトップ`）を
 Node が開けません。**PowerShell を `-EncodedCommand` で呼んで UTF-8 で受けています**。
@@ -97,8 +104,8 @@ Node が開けません。**PowerShell を `-EncodedCommand` で呼んで UTF-8 
 
 | | |
 |---|---|
-| `MrDrop_v1.0.2_win.zip` | **35,686,587 バイト** |
-| SHA-256 | **`f6cfda05c218d90d66f370224290a68627a504a3c5d3535dfce314c508621b19`** |
+| `MrDrop_v1.0.2_win.zip` | **35,686,831 バイト** |
+| SHA-256 | **`ed7f4ccb0ed101ef0b4ab6d3c761ded61dc460d5fb039c9e17f5f121cc65974a`** |
 
 🔴 **1.0.1 は配らずに取り下げました**（上のジャンクションの穴があるため）。
 `_build/MrDrop_v1.0.1_win_配らずに取り下げ.zip` に退かせてあります。**これは上げないでください。**

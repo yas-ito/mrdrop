@@ -335,8 +335,13 @@ else { Warn "20秒待っても上がりませんでした。$LogFile を見て�
 
 Write-Host ""
 if ($up) {
-  Write-Host "  済みました。iPhone の Safari で開いてください:" -ForegroundColor Green
-  Write-Host "    http://$($env:COMPUTERNAME.ToLower()).local:$port"
+  # 🔴 ここで URL を出さないこと（2026-09-15・本人の指摘）。
+  #    1.0.0 の頃は Safari が唯一の入口だったので正しかったが、いまは iPhone アプリが
+  #    **設定なしでこの PC を見つける**。URL を見せても iPhone で手打ちさせるだけで、
+  #    そもそも黒い画面の文字を iPhone へ渡す手立てが無い。
+  #    アプリを使わない道は取扱説明書にある。入れ終わった人の第一声はアプリでよい。
+  Write-Host "  済みました。iPhone に「Mr.Drop」アプリを入れてください（App Store・無料）。" -ForegroundColor Green
+  Write-Host "  写真アプリの共有ボタンから送ると、この PC に届きます。"
 } else {
   Write-Host "  設定は済みましたが、まだ動いていません。" -ForegroundColor Yellow
 }
