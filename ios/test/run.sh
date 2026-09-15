@@ -1,5 +1,5 @@
 #!/bin/bash
-# 日付の引き継ぎを確かめる:  bash ios/test/run.sh
+# 日付の引き継ぎと、mp4 への詰め替えを確かめる:  bash ios/test/run.sh
 #
 # 🔴 Xcode のテストターゲットは作っていない。`Shared/FileDate.swift` は Mac でもそのまま
 #    動くので、Mac のコマンドとして組み立てて走らせる（シミュレータも実機も要らない）。
@@ -23,5 +23,5 @@ else
   echo "⚠️ ffmpeg が無いので、動画の分は飛ばします"
 fi
 
-swiftc -O -suppress-warnings -o "$WORK/datetest" "$HERE/../Shared/FileDate.swift" "$HERE/main.swift"
+swiftc -O -suppress-warnings -o "$WORK/datetest" "$HERE/../Shared/FileDate.swift" "$HERE/../Shared/Remux.swift" "$HERE/main.swift"
 "$WORK/datetest" "$WORK"

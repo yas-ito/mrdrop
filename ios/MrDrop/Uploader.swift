@@ -14,6 +14,9 @@ final class Uploader: NSObject, ObservableObject {
         var error: String?
         /// まだ iOS から受け取っている最中（送信は始まっていない）
         var staging = false
+        /// 送れてはいるが、伝えておくこと（例: MP4 にできなかった）。
+        /// 🔴 約束（「PC で扱いやすい形式にする」）を守れなかったときに黙らないための欄。
+        var note: String?
     }
 
     @Published private(set) var jobs: [Job] = []
@@ -108,15 +111,16 @@ final class Uploader: NSObject, ObservableObject {
     @discardableResult
     /// - Parameter whileWatching: 画面を開いたまま送るなら true（速い普通のセッションを使う）。
     ///   共有拡張からは必ず false。アプリが消えても続くように background のままにする。
+    /// - Parameter note: 送りはするが伝えたいこと（例: 「MP4 にできませんでした」）。一覧の行に出る。
     func send(fileURL: URL, filename rawName: String, to peer: MrDrop.Peer, modified: Date?,
-              whileWatching: Bool = false) -> Bool {
+              whileWatching: Bool = false, note: String? = nil) -> Bool {
         let filename = MrDrop.tidyName(rawName)      // 拡張子は小文字に揃える
         guard let req = MrDrop.uploadRequest(to: peer, filename: filename, modified: modified) else { return false }
         let task = (whileWatching ? live! : session!).uploadTask(with: req, fromFile: fileURL)
         task.taskDescription = fileURL.path              // 済んだら消すために覚えておく
         let size = (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int64) ?? nil
         MrDrop.log("転送", "開始 \(filename) \(size ?? -1) バイト → \(peer.host):\(peer.port) 経路=\(whileWatching ? "前面" : "背面")")
-        let job = Job(id: task.taskIdentifier, filename: filename, total: size ?? 0)
+        let job = Job(id: task.taskIdentifier, filename: filename, total: size ?? 0, note: note)
         DispatchQueue.main.async { self.jobs.insert(job, at: 0) }
         markStart(task.taskIdentifier)
         task.resume()

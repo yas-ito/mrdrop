@@ -39,18 +39,15 @@ func makeJPEG(_ name: String, exif: [CFString: Any]) -> URL {
     return url
 }
 
-/// `ContentView.remuxToMP4` と同じ手順で mov → mp4 に詰め替える。
-func remux(_ url: URL, to out: URL, taken: Date?) async -> Bool {
-    guard let ex = AVAssetExportSession(asset: AVURLAsset(url: url),
-                                        presetName: AVAssetExportPresetPassthrough) else { return false }
-    try? FileManager.default.removeItem(at: out)
-    ex.outputURL = out
-    ex.outputFileType = .mp4
-    if let taken { ex.metadata = FileDate.creationMetadata(taken) }
-    await withCheckedContinuation { c in ex.exportAsynchronously { c.resume() } }
-    guard ex.status == .completed else { return false }
-    if let taken { FileDate.patchContainerDate(out, to: taken) }
-    return true
+/// 🔴 **本物の `Shared/Remux.swift` を通す。**ここに写しを置いていたせいで、
+///    「テストは通るのに実機では半分失敗する」を見逃した（2026-09-15）。
+///    素材は詰め替えで消えるので、その都度コピーしてから渡す。
+var remuxLog: [String] = []
+func remuxCopy(_ src: URL, as name: String, taken: Date?) async -> Remux.Result {
+    let work = dir.appendingPathComponent(name)
+    try? FileManager.default.removeItem(at: work)
+    try? FileManager.default.copyItem(at: src, to: work)
+    return await Remux.toMP4(work, taken: taken, log: { remuxLog.append($0) })
 }
 
 /// mp4 のヘッダ（moov → mvhd）に書いてある作成日時を、自前で読み出す。
@@ -156,14 +153,14 @@ func run() async {
         let src = dir.appendingPathComponent("sample.mov")
         // 🔴 これまでの症状の再現。「消える」のではなく**変換した時刻に化ける**。
         //    nil になるより悪い——もっともらしい嘘の日付なので、誰も間違いに気づけない
-        let old = dir.appendingPathComponent("out-old.mp4")
-        _ = await remux(src, to: old, taken: nil)
+        let old = (await remuxCopy(src, as: "out-old.mov", taken: nil)).url
+                  ?? dir.appendingPathComponent("out-old.mp4")
         let od = await FileDate.embedded(in: old)
         check(od != nil && abs(od!.timeIntervalSinceNow) < 300,
               "🔴 札を載せないと作成日時が「変換した時刻」に化ける（再現） → \(show(od))")
 
-        let now = dir.appendingPathComponent("out-new.mp4")
-        _ = await remux(src, to: now, taken: movTaken)
+        let now = (await remuxCopy(src, as: "out-new.mov", taken: movTaken)).url
+                  ?? dir.appendingPathComponent("out-new.mp4")
         let nd = await FileDate.embedded(in: now)
         check(nd == movTaken, "札を載せれば撮影日時が残る → \(show(nd))")
 
@@ -187,6 +184,37 @@ func run() async {
         let s1 = (try? Data(contentsOf: old).count) ?? 0
         let s2 = (try? Data(contentsOf: now).count) ?? -1
         check(abs(s1 - s2) < 4096, "大きさはほぼ同じ＝作り直していない（\(s1) / \(s2) バイト）")
+    }
+
+    if hasMovies {
+        suite("詰め替えの手当て（2026-09-15・13回中6回黙って失敗していた件）")
+
+        // ① mov は mp4 になる。元は消える（App Group に二重に置かないため）
+        let src = dir.appendingPathComponent("sample.mov")
+        let r = await remuxCopy(src, as: "case-ok.mov", taken: movTaken)
+        check(r.url?.pathExtension == "mp4" && r.note == nil, "mov → mp4 になり、知らせは出ない")
+        check(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("case-ok.mov").path),
+              "元の mov は消える")
+        let tracks = (try? await AVURLAsset(url: r.url!).load(.tracks))?.count ?? 0
+        check(tracks == 2, "中身は無傷（トラック \(tracks) 本）＝作り直していない")
+
+        // ② すでに mp4 なら何もしない（触ると日付とヘッダを壊す）
+        let already = dir.appendingPathComponent("sample.mp4")
+        let r2 = await Remux.toMP4(already, taken: movTaken, log: { remuxLog.append($0) })
+        check(r2.url == already && r2.note == nil, "すでに mp4 ならそのまま返す")
+        check(FileManager.default.fileExists(atPath: already.path), "そのままの mp4 は消さない")
+
+        // ③ 🔴 詰め替えられない物は、黙らずに画面へ一行出す（09-15 に直した所）
+        let broken = dir.appendingPathComponent("broken.mov")
+        try? Data("これは動画ではありません".utf8).write(to: broken)
+        remuxLog.removeAll()
+        let r3 = await Remux.toMP4(broken, taken: nil, log: { remuxLog.append($0) })
+        check(r3.url == nil, "詰め替えられない物は元のまま送る（url は nil）")
+        check(r3.note?.contains("MP4 にできませんでした") == true,
+              "🔴 黙らない＝画面に出す一行が返る → \(r3.note ?? "なし")")
+        check(remuxLog.contains { $0.contains("元のまま送ります") },
+              "記録にも理由が残る → \(remuxLog.first ?? "なし")")
+        check(FileManager.default.fileExists(atPath: broken.path), "駄目だったときは元を消さない")
     }
 
     print("")
