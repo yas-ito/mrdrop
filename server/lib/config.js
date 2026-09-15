@@ -63,6 +63,22 @@ function askWindows() {
   return asked;
 }
 
+// 🔴 名前が違うだけで、**同じ場所**のことがある（2026-09-15・本人の機械で実測）。
+//    OneDrive は %USERPROFILE%\OneDrive\デスクトップ を
+//    **%USERPROFILE%\Desktop へのジャンクション**にすることがある。パスは2つ、実体は1つ。
+//    気づかずに引っ越すと「移した先」＝「移す前」なので、最後の**抜け殻を消す**で
+//    **本物を消してしまう**（空なら作り直されるが、開いていたエクスプローラが壊れる）。
+//    path.resolve では見抜けない。**実体まで開いて比べること。**
+function samePlace(a, b) {
+  const norm = (p) => path.resolve(p).replace(/[\\/]+$/, "").toLowerCase();
+  if (norm(a) === norm(b)) return true;
+  try {
+    return norm(fs.realpathSync.native(a)) === norm(fs.realpathSync.native(b));
+  } catch {
+    return false;                                 // 開けないなら「同じ」とは言わない
+  }
+}
+
 // 返ってきた答えを疑う。空・相対・%VAR% が残っている物は使わない。
 function usable(p) {
   const s = String(p == null ? "" : p).trim();
@@ -153,6 +169,9 @@ function fixStaleOutbox(cfg, file, where) {
   if (!desk) return null;
   const want = path.join(desk, OUTBOX);
   if (path.resolve(want) === stale) return null;         // 移していない人＝直すところが無い
+  // 🔴 名前が2つあるだけで、同じ場所のことがある（OneDrive のジャンクション）。
+  //    ここを見落とすと、引っ越したつもりで**本物を消す**。
+  if (samePlace(path.dirname(stale), desk)) return null;
 
   let moved = 0;
   let left = 0;

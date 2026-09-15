@@ -180,6 +180,41 @@ module.exports = async function (t) {
     }
   });
 
+  // 🔴 名前が違うだけで、**同じ場所**のことがある（2026-09-15・本人の機械で実際に起きた）。
+  //    OneDrive が `%USERPROFILE%\OneDrive\デスクトップ` を `%USERPROFILE%\Desktop` への
+  //    **ジャンクション**にしていた。パスは2つ、実体は1つ。気づかずに引っ越すと
+  //    「移した先」＝「移す前」なので、最後の**抜け殻を消す**で本物を消してしまう。
+  //    （実際に一瞬消えて作り直され、開いていたエクスプローラが壊れた。）
+  suite("送信箱 — 名前が2つあるだけの同じ場所は、触らない", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mrdrop-junction-"));
+    const realDesk = path.join(dir, "Desktop");
+    const linkDesk = path.join(dir, "OneDrive", "デスクトップ");
+    try {
+      const stale = path.join(realDesk, OUTBOX);
+      const file = path.join(dir, "config.json");
+      fs.mkdirSync(stale, { recursive: true });
+      fs.mkdirSync(path.dirname(linkDesk), { recursive: true });
+      fs.writeFileSync(path.join(stale, "大事な物.txt"), "消えたら困る", "utf8");
+      fs.writeFileSync(file, JSON.stringify({ outbox: stale }), "utf8");
+
+      try {
+        fs.symlinkSync(realDesk, linkDesk, WIN ? "junction" : "dir");
+      } catch {
+        ok(true, "この環境ではジャンクションを作れない（ここは測れません）");
+        return;
+      }
+
+      const cfg = { outbox: stale };
+      eq(fixStaleOutbox(cfg, file, { stale, desktop: linkDesk }), null, "同じ場所なので何もしない");
+      eq(cfg.outbox, stale, "送信箱の場所も変えない");
+      ok(fs.existsSync(stale), "🔴 本物を消していない");
+      eq(fs.readFileSync(path.join(stale, "大事な物.txt"), "utf8"), "消えたら困る", "🔴 中身も無事");
+    } finally {
+      try { fs.rmSync(linkDesk, { force: true }); } catch { /* ジャンクションを先に外す */ }
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   // 🔴 送信箱はデスクトップの中だが、**デスクトップの場所は人によって違う**。
   //    見つからない人のために、常駐アイコンから必ず開けるようにした（2026-09-15）。
   //    呼ぶ側（常駐アイコン）と受ける側（.ps1）が食い違うと、押しても何も起きない。
