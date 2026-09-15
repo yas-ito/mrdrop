@@ -95,7 +95,7 @@ namespace MrDrop
             //    「送信箱がデスクトップに出てこない」で詰まった。ここから必ず開ける。
             menu.Items.Add(new ToolStripMenuItem("送信箱を開く", null, (s, e) => RunSettings("-OpenOutbox", false)));
             menu.Items.Add(new ToolStripMenuItem("受信先を変える...", null, (s, e) => ChangeInbox()));
-            menu.Items.Add(new ToolStripMenuItem("送信箱を変える...", null, (s, e) => ChangeOutbox()));
+            menu.Items.Add(new ToolStripMenuItem("送信箱を移動する...", null, (s, e) => MoveOutbox()));
             menu.Items.Add(new ToolStripMenuItem("この PC の名前を変える...", null, (s, e) => ChangeName()));
             menu.Items.Add(new ToolStripMenuItem("取扱説明書", null, (s, e) => OpenManual()));
             menu.Items.Add(startupItem);
@@ -283,11 +283,12 @@ namespace MrDrop
             RestartServer();
         }
 
-        // 🔴 送信箱も同じ。**中身は .ps1 が一緒に引っ越す**（場所だけ変えると置き去りになる）。
-        //    引っ越しの決まりは向こうに一本化してある。ここには持たない。
-        void ChangeOutbox()
+        // 🔴 送信箱は「**フォルダごと**」動かす（本人の指示 2026-09-15）。
+        //    選ぶのは置き場所だけ。前は「好きなフォルダを送信箱にする」作りで、
+        //    買った人の持ち物を丸ごと運ぶ事故を起こした。決まりは .ps1 に一本化してある。
+        void MoveOutbox()
         {
-            RunSettings("-ChooseOutbox -FromTray", true);
+            RunSettings("-MoveOutbox -FromTray", true);
             RestartServer();
         }
 

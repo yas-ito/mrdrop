@@ -228,17 +228,26 @@ module.exports = async function (t) {
     ok(/\[switch\]\$OpenOutbox/.test(psSrc), "🔴 .ps1 が -OpenOutbox を受ける（押して何も起きないのが一番こまる）");
     ok(/if \(\$OpenOutbox\)/.test(psSrc), "受けたあと、実際に開いている");
 
-    // 🔴 場所も変えられる（本人の指示 2026-09-15）。中身の引っ越しは .ps1 に一本化。
-    ok(/ToolStripMenuItem\("送信箱を変える\.\.\."[\s\S]{0,60}ChangeOutbox/.test(csSrc),
-       "メニューに「送信箱を変える...」がある");
-    ok(/-ChooseOutbox -FromTray/.test(csSrc), "変えたあとに常駐を入れ直す（-FromTray）");
-    ok(/\[switch\]\$ChooseOutbox/.test(psSrc), "🔴 .ps1 が -ChooseOutbox を受ける");
-    ok(/if \(\$ChooseOutbox\)/.test(psSrc), "受けたあと、実際に選ばせている");
-    ok(/Move-OutboxContents \$now \$new/.test(psSrc), "中身を引っ越す道がある");
-    // 🔴 2026-09-15 の事故。中身は**黙って運ばない**。
-    ok(/MessageBox\]::Show/.test(psSrc), "🔴 中身を移す前に必ず聞いている");
-    ok(/if \(Test-StandardFolder \$new\)/.test(psSrc), "🔴 大事なフォルダそのものは選ばせない");
-    ok(/if \(Test-StandardFolder \$now\)/.test(psSrc), "🔴 前の送信箱が大事なフォルダなら、中身を動かさない");
+    // 🔴 場所も動かせる（本人の指示 2026-09-15）。**フォルダごと**動かす。
+    ok(/ToolStripMenuItem\("送信箱を移動する\.\.\."[\s\S]{0,60}MoveOutbox/.test(csSrc),
+       "メニューに「送信箱を移動する...」がある");
+    ok(/-MoveOutbox -FromTray/.test(csSrc), "動かしたあとに常駐を入れ直す（-FromTray）");
+    ok(/\[switch\]\$MoveOutbox/.test(psSrc), "🔴 .ps1 が -MoveOutbox を受ける");
+    ok(/if \(\$MoveOutbox\)/.test(psSrc), "受けたあと、実際に選ばせている");
+
+    // 🔴 2026-09-15 の事故。**選ぶのは置き場所だけ。送信箱はフォルダごと動かす。**
+    //    「好きなフォルダを送信箱にする」作りに戻すと、また買った人の持ち物を運ぶ。
+    ok(/Move-Item -LiteralPath \$now -Destination \$dest/.test(psSrc),
+       "🔴 フォルダごと動かしている（中身だけ運ぶ作りに戻っていない）");
+    ok(/\$dest = Join-Path \$parent \$OutboxName/.test(psSrc),
+       "🔴 行き先は「選んだ場所 ＋ 送信箱の名前」（選ばれたフォルダ自体を送信箱にしない）");
+    ok(psSrc.includes('$OutboxName = "' + OUTBOX + '"'),
+       "🔴 送信箱の名前が node 側（config.js の OUTBOX）と同じ");
+
+    // 🔴 窓が後ろに隠れると、押した人には「何も起きない」に見える（本人の指摘）。
+    ok(/function New-TopWindow/.test(psSrc), "最前面の親を作る口がある");
+    ok(/ShowDialog\(\$top\)/.test(psSrc), "🔴 フォルダを選ぶ画面を最前面に出している");
+    ok(/MessageBox\]::Show\(\$top,/.test(psSrc), "🔴 知らせる窓も最前面に出している");
 
     // 🔴 2026-09-15。雫から呼ばれるとき、常駐アイコンは PowerShell を **-WindowStyle Hidden** で
     //    起動する。断りも知らせも Write-Host だけでは**誰も読めない画面に出して終わる**ことになり、
@@ -248,8 +257,8 @@ module.exports = async function (t) {
     ok(/Show-Box[^\n]*'Warning'/.test(psSrc), "🔴 断るときも窓で知らせる");
     ok(/Show-Box[^\n]*'Information'/.test(psSrc), "🔴 変えたときも窓で知らせる");
     ok(/if \(-not \$FromTray\) \{ return \}/.test(psSrc), "黒い画面が見えているときは、二重に出さない");
-    ok(/Test-SamePlace \$new \(Get-InboxPath\)/.test(psSrc),
-       "🔴 受信先と同じ場所は断っている（届いた物が全部見えてしまう）");
+    // 🔵 「受信先と同じ場所になる」心配は、フォルダごと動かす形にしたら消えました
+    //    （行き先は必ず「選んだ場所 ＋ Mr.Drop送信箱」なので、受信先そのものにはなりません）。
 
     // 🔴 .cs を直してビルドを忘れると、配るのは古いアイコンのまま。機械で見る。
     const exe = path.join(__dirname, "..", "..", "tray", "MrDropTray.exe");
@@ -257,7 +266,7 @@ module.exports = async function (t) {
     const bin = fs.readFileSync(exe);
     ok(bin.includes(Buffer.from("送信箱を開く", "utf16le")),
        "🔴 作り直した MrDropTray.exe にも入っている（build\\build-tray.ps1 を忘れていない）");
-    ok(bin.includes(Buffer.from("送信箱を変える...", "utf16le")), "🔴 「送信箱を変える...」も入っている");
+    ok(bin.includes(Buffer.from("送信箱を移動する...", "utf16le")), "🔴 「送信箱を移動する...」も入っている");
   });
 
   // 🔴 「保存先」をやめて「受信先」に統一した（本人の指示 2026-09-15）。
@@ -292,12 +301,12 @@ module.exports = async function (t) {
   //    **中身も一緒に引っ越す**こと。場所だけ変えると前の送信箱のファイルが置き去りになり、
   //    説明書の「送信箱は動かさないでください」と食い違う。
   //    🔴 ファイルを失いかねない処理なので、.ps1 の引っ越しを**直接呼んで**固める。
-  suite("送信箱を変える — 中身の引っ越し", () => {
+  suite("送信箱を移動する — 行き先に同じ物があったときだけ、中身を足す", () => {
     const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
     if (!WIN || !fs.existsSync(ps1)) { ok(true, "Windows でだけ測れます"); return; }
     const move = (from, to) => JSON.parse(execFileSync("powershell", [
       "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps1,
-      "-MoveOutboxFrom", from, "-MoveOutboxTo", to,
+      "-MergeOutboxFrom", from, "-MergeOutboxTo", to,
     ], { stdio: ["ignore", "pipe", "ignore"], timeout: 60000, windowsHide: true }).toString("utf8"));
 
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mrdrop-move-"));
@@ -348,34 +357,6 @@ module.exports = async function (t) {
     } finally {
       try { fs.rmSync(link, { force: true }); } catch { /* ジャンクションを先に外す */ }
       fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  // 🔴 2026-09-15 の事故の芯。送信箱に「ビデオ」を選び、そのあと「デスクトップ」に変えたら、
-  //    **ビデオの中身7つが全部デスクトップへ移った**。送信箱に選ばれたフォルダの中身は
-  //    「送信箱の中身」ではなく**買った人の持ち物**で、こちらの都合で動かしてよい物ではなかった。
-  //    そもそも大事なフォルダそのものは、**中身が全部 同じ Wi-Fi から見える**ので選ばせてはいけない。
-  suite("送信箱を変える — 大事なフォルダそのものは選ばせない", () => {
-    const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
-    if (!WIN || !fs.existsSync(ps1)) { ok(true, "Windows でだけ測れます"); return; }
-    const isStd = (p) => JSON.parse(execFileSync("powershell", [
-      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps1, "-IsStandardFolder", p,
-    ], { stdio: ["ignore", "pipe", "ignore"], timeout: 60000, windowsHide: true }).toString("utf8")).standard;
-
-    const home = os.homedir();
-    const desk = askWindows().desktop || path.join(home, "Desktop");
-    ok(isStd(desk), "🔴 デスクトップそのものは断る");
-    ok(isStd(path.join(home, "Videos")), "🔴 ビデオそのものは断る（今回これで事故った）");
-    ok(isStd(path.join(home, "Downloads")), "🔴 ダウンロードそのものは断る");
-    ok(isStd(home), "🔴 ユーザーフォルダそのものは断る");
-    ok(isStd(path.parse(home).root), "🔴 ドライブの根っこは断る");
-
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mrdrop-std-"));
-    try {
-      ok(!isStd(tmp), "ふつうのフォルダは選べる");
-      ok(!isStd(path.join(desk, OUTBOX)), "デスクトップの中の送信箱は選べる");
-    } finally {
-      fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
 

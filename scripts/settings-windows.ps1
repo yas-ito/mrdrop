@@ -3,7 +3,7 @@
 #   -ChooseInbox    受信先をフォルダ選択で変える（Mac のメニュー「受信先を変える…」と同じ）
 #   -OpenInbox      受信先をエクスプローラで開く（Mac の「受信先を開く」と同じ）
 #   -OpenOutbox     送信箱をエクスプローラで開く（iPhone へ渡す物を置く場所）
-#   -ChooseOutbox   送信箱をフォルダ選択で変える（**中身も一緒に引っ越します**）
+#   -MoveOutbox     「Mr.Drop送信箱」フォルダごと、選んだ場所へ移す（中身も付いていきます）
 #   -ChooseName     この PC の名前を変える（iPhone の一覧に出る名前）
 #   -MakeResident   窓なしで常駐させる（install-windows.ps1 を呼ぶ。管理者へ昇格する）
 #   -Uninstall      入れる前に戻す（同上。届いたファイルは消さない）
@@ -14,8 +14,9 @@
 #   -PrintDefaults  既定の置き場所を JSON で吐いて終わる（買った人は使わない）。
 #                   server/test/config.test.js が、node 側の既定と食い違っていないかを
 #                   これで突き合わせる。**手で揃えるのは必ずまた外れる**ため
-#   -MoveOutboxFrom / -MoveOutboxTo
-#                   送信箱の中身を引っ越すだけ（買った人は使わない）。
+#   -MergeOutboxFrom / -MergeOutboxTo
+#                   送信箱の中身を足すだけ（買った人は使わない）。移す先に同じ名前の
+#                   送信箱が先にあったときに使う道。
 #                   🔴 **ファイルを失いかねない処理なので、テストから直接呼んで固めている**
 #                   （server/test/config.test.js）。画面は出さず、結果を JSON で吐く
 #
@@ -32,12 +33,11 @@ param(
   [switch]$MakeResident,
   [switch]$Uninstall,
   [switch]$FromTray,
-  [switch]$ChooseOutbox,
+  [switch]$MoveOutbox,
   [switch]$Pause,
   [switch]$PrintDefaults,
-  [string]$MoveOutboxFrom,
-  [string]$MoveOutboxTo,
-  [string]$IsStandardFolder
+  [string]$MergeOutboxFrom,
+  [string]$MergeOutboxTo
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,6 +52,9 @@ $CfgFile  = Join-Path $AppDir "config.json"
 $TrayExe  = Join-Path $AppDir "app\MrDropTray.exe"
 $RunKey   = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 $RunName  = "MrDrop"
+# 🔴 送信箱のフォルダ名。server/lib/config.js の OUTBOX と**必ず同じ**にすること
+#    （server/test/config.test.js が突き合わせます）。
+$OutboxName = "Mr.Drop送信箱"
 
 function Say  ($m) { Write-Host "   $m" }
 function Head ($m) { Write-Host ""; Write-Host "== $m" -ForegroundColor Cyan }
@@ -64,11 +67,31 @@ function Wait-IfAsked {
 #    Write-Host だけで済ませると「**誰も読めない画面に出して終わる**」ことになり、
 #    押した人には「何も起きない」に見えます（2026-09-15 に実際に起きました）。
 #    **画面が無いときは、必ず窓を出して知らせること。**
+# 🔴 雫から呼ばれたとき、こちらには窓がありません。親を渡さないと、出した窓が
+#    **ほかのウィンドウの後ろに隠れて**、押した人には見えません（本人の指摘 2026-09-15）。
+#    見えない透明な窓を最前面に1つ置いて、それを親にします。
+function New-TopWindow {
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+  $f = New-Object System.Windows.Forms.Form
+  $f.TopMost        = $true
+  $f.ShowInTaskbar  = $false
+  $f.FormBorderStyle = 'None'
+  $f.Opacity        = 0
+  $f.Size           = New-Object System.Drawing.Size(1, 1)
+  $f.StartPosition  = 'CenterScreen'
+  $f.Show()
+  $f.Activate()
+  return $f
+}
+
 function Show-Box ($m, $icon) {
   if (-not $FromTray) { return }        # .bat から呼ばれたときは黒い画面が出ているので要らない
   try {
-    Add-Type -AssemblyName System.Windows.Forms
-    [System.Windows.Forms.MessageBox]::Show($m, "Mr.Drop", 'OK', $icon) | Out-Null
+    $top = New-TopWindow
+    try {
+      [System.Windows.Forms.MessageBox]::Show($top, $m, "Mr.Drop", 'OK', $icon) | Out-Null
+    } finally { $top.Dispose() }
   } catch { }
 }
 
@@ -174,41 +197,7 @@ function Test-SamePlace ($a, $b) {
   }
 }
 
-# 🔴 Windows の大事なフォルダ「そのもの」かどうか（2026-09-15・本人の機械で事故を起こした）。
-#
-#    送信箱に「ビデオ」を選び、そのあと「デスクトップ」に変えたら、
-#    **ビデオの中身7つが全部デスクトップへ移った**。買った人の持ち物を、
-#    こちらの都合（送信箱の引っ越し）で動かしてしまった。
-#    そもそも**中身が全部 同じ Wi-Fi から一覧できる**ので、選ばせてはいけない場所。
-function Test-StandardFolder ($p) {
-  if (-not $p) { return $false }
-  try { $full = [System.IO.Path]::GetFullPath($p) } catch { return $false }
-
-  # ドライブの根っこ（C:\ など）
-  $root = [System.IO.Path]::GetPathRoot($full)
-  if ($full.TrimEnd('\') -eq $root.TrimEnd('\')) { return $true }
-
-  $list = @()
-  foreach ($n in @('DesktopDirectory', 'MyDocuments', 'MyPictures', 'MyVideos', 'MyMusic', 'UserProfile')) {
-    $v = [Environment]::GetFolderPath($n)
-    if ($v) { $list += $v }
-  }
-  # ダウンロードは .NET が知らないので、既知フォルダの ID でレジストリから読む
-  try {
-    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'
-    $dl = Expand-Path (Get-ItemProperty -LiteralPath $key -ErrorAction Stop).'{374DE290-123F-4565-9164-39C4925E467B}'
-    if ($dl) { $list += $dl }
-  } catch { }
-  if ($env:OneDrive) { $list += $env:OneDrive }
-
-  foreach ($s in $list) {
-    # 🔴 文字列では見抜けない（ジャンクション・別名）。印を置いて確かめる。
-    if (Test-SamePlace $full $s) { return $true }
-  }
-  return $false
-}
-
-# 送信箱の中身を引っ越す。
+# 送信箱の中身を足す（移す先に同じ名前の送信箱が先にあったときだけ使う道）。
 #
 # 🔴 **上書きしない**（この道具の決まり）。同じ名前が先にあったら、残して見送る。
 # 🔴 **全部移せたときだけ**、空になった元を片付ける。1つでも残っていたら元も残す。
@@ -332,17 +321,10 @@ if ($PrintDefaults) {
 
 # ── 引っ越しだけ走らせる（テスト用。買った人は使わない） ──
 # 🔴 ファイルを失いかねない処理なので、テストから直接呼んで固めています。
-if ($MoveOutboxFrom) {
+if ($MergeOutboxFrom) {
   [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
-  if (-not $MoveOutboxTo) { Fail "-MoveOutboxTo も要ります。" }
-  (Move-OutboxContents $MoveOutboxFrom $MoveOutboxTo) | ConvertTo-Json -Compress
-  exit 0
-}
-
-# 🔴 「大事なフォルダそのものか」の判定も、テストから直接呼んで固めています（買った人は使わない）。
-if ($IsStandardFolder) {
-  [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
-  (@{ standard = [bool](Test-StandardFolder $IsStandardFolder) }) | ConvertTo-Json -Compress
+  if (-not $MergeOutboxTo) { Fail "-MergeOutboxTo も要ります。" }
+  (Move-OutboxContents $MergeOutboxFrom $MergeOutboxTo) | ConvertTo-Json -Compress
   exit 0
 }
 
@@ -367,7 +349,13 @@ if ($ChooseInbox) {
     Fail "フォルダ選択の画面を出せません（STA ではありません）。`n   隣の「受信先を変える.bat」から実行してください。"
   }
 
-  if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+  # 🔴 親を渡さないと、選ぶ画面がほかのウィンドウの後ろに出る（本人の指摘 2026-09-15）。
+  $top = $null
+  try { $top = New-TopWindow } catch { }
+  $res = if ($top) { $dlg.ShowDialog($top) } else { $dlg.ShowDialog() }
+  if ($top) { $top.Dispose() }
+
+  if ($res -ne [System.Windows.Forms.DialogResult]::OK) {
     Write-Host ""
     Say "やめました。受信先は変えていません。"
     Wait-IfAsked
@@ -420,127 +408,102 @@ if ($OpenOutbox) {
   exit 0
 }
 
-# ── 送信箱を変える ────────────────────────────────────────
-# 🔴 **中身も一緒に引っ越すこと。**場所だけ変えると、前の送信箱のファイルが置き去りになる。
-#    取扱説明書に「送信箱は動かさないでください」と書いてあるのに、設定から変えたときだけ
-#    置き去りになるのでは筋が通らない。
-# 🔴 **受信先と同じ場所は断る。**送信箱の中身は**同じ Wi-Fi から一覧できる**ので、
-#    同じにすると、iPhone から届いたものが全部見えてしまう。
-if ($ChooseOutbox) {
-  Head "送信箱を変える"
+# ── 送信箱を移動する ──────────────────────────────────────
+# 🔴 **「Mr.Drop送信箱」フォルダごと**移します（本人の指示 2026-09-15）。
+#    選んでもらうのは**置き場所（親フォルダ）**だけで、送信箱の名前は変えません。
+#
+#    前は「好きなフォルダを送信箱にする」作りでした。それだと**買った人の持ち物を
+#    送信箱にできてしまい、次に変えたときその中身を丸ごと運ぶ**事故を起こしました
+#    （ビデオ → デスクトップで、ビデオの中身7つが動いた）。
+#    **フォルダごと動かす形なら、他人の持ち物に触る余地がそもそもありません。**
+#    前の場所に空の送信箱が残ることもありません。
+if ($MoveOutbox) {
+  Head "送信箱を移動する"
   $now = Get-OutboxPath
   Say "いまの送信箱: $now"
   Write-Host ""
-  Say "iPhone へ渡したい物を置くフォルダを選びます。"
-  Say "いまの中身は、選んだ先へ一緒に引っ越します。"
-  Write-Host ""
-  Warn "ここに置いた物は、同じ Wi-Fi の人から一覧できます。"
-  Warn "デスクトップやドキュメントを丸ごと選ぶと、置いてある物が全部見えます。"
+  Say "「$OutboxName」フォルダごと、選んだ場所へ移します。"
+  Say "中身もそのまま付いていきます。"
 
   Add-Type -AssemblyName System.Windows.Forms
-  $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-  $dlg.Description  = "iPhone へ渡す物を置くフォルダを選んでください（いまの中身も一緒に引っ越します）"
-  $dlg.SelectedPath = if (Test-Path -LiteralPath $now) { $now } else { [Environment]::GetFolderPath('DesktopDirectory') }
-  $dlg.ShowNewFolderButton = $true
 
   # 🔴 ShowDialog は STA スレッドでないと黙って失敗する（黙って何も起きないのが最悪）。
   if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
     Fail "フォルダ選択の画面を出せません（STA ではありません）。`n   タスクバーの雫のメニューから実行してください。"
   }
 
-  if ($dlg.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+  # 🔴 親を渡さないと、選ぶ画面がほかのウィンドウの後ろに出る（本人の指摘）。
+  $top = $null
+  try { $top = New-TopWindow } catch { }
+  $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+  $dlg.Description  = "「$OutboxName」をどこに置きますか（フォルダごと、その中へ移します）"
+  $dlg.SelectedPath = Split-Path -Parent $now
+  $dlg.ShowNewFolderButton = $true
+  $res = if ($top) { $dlg.ShowDialog($top) } else { $dlg.ShowDialog() }
+  if ($top) { $top.Dispose() }
+
+  if ($res -ne [System.Windows.Forms.DialogResult]::OK) {
     Write-Host ""
-    Say "やめました。送信箱は変えていません。"
+    Say "やめました。送信箱は動かしていません。"
     Wait-IfAsked
     exit 0
   }
 
-  $new = $dlg.SelectedPath
-  if (-not (Test-Path -LiteralPath $new)) { Fail "そのフォルダが見つかりません: $new" }
+  $parent = $dlg.SelectedPath
+  if (-not (Test-Path -LiteralPath $parent)) { Fail "そのフォルダが見つかりません: $parent" }
 
-  # 🔴 Windows の大事なフォルダ「そのもの」は選ばせない（2026-09-15 の事故）。
-  #    ・中に置いてある物が全部、同じ Wi-Fi から一覧できてしまう
-  #    ・そこを送信箱にすると、次に変えたとき**中身が丸ごと運ばれる**（実際に起きた）
-  if (Test-StandardFolder $new) {
-    Fail ("そこは Windows の大事なフォルダそのものです: $new`n" +
-          "   送信箱にすると、その中に置いてある物が全部、同じ Wi-Fi から見えてしまいます。`n" +
-          "   その中に新しいフォルダを作って、そちらを選んでください`n" +
-          "   （フォルダを選ぶ画面の「新しいフォルダーの作成」で作れます）。")
-  }
-
-  # 書けるフォルダかを実際に試す。渡す段になって失敗するより、いま分かった方がよい。
-  $probe = Join-Path $new ".mrdrop-write-test"
+  # 置ける場所かを実際に試す。動かす途中で失敗するより、いま分かった方がよい。
+  $probe = Join-Path $parent ".mrdrop-write-test"
   try {
     [System.IO.File]::WriteAllText($probe, "ok")
     Remove-Item -LiteralPath $probe -Force
   } catch {
-    Fail "そのフォルダには書き込めません: $new`n   別のフォルダを選んでください。"
+    Fail "そこには置けません（書き込めませんでした）: $parent`n   別の場所を選んでください。"
   }
 
-  # 🔴 受信先と同じ場所にはできない。文字列では見抜けないので、印を置いて確かめる。
-  if (Test-SamePlace $new (Get-InboxPath)) {
-    Fail ("そこは受信先（iPhone から届いたものが入る所）と同じ場所です。`n" +
-          "   送信箱の中身は同じ Wi-Fi から一覧できるので、届いた物が全部見えてしまいます。`n" +
-          "   別のフォルダを選んでください。")
-  }
-
-  if (Test-SamePlace $new $now) {
+  if (Test-SamePlace $parent (Split-Path -Parent $now)) {
     Write-Host ""
-    Say "そこは、いまの送信箱と同じ場所です。何も変えていません。"
-    Show-Box "そこは、いまの送信箱と同じ場所です。`n`n何も変えていません。" 'Information'
+    Say "そこは、いまの置き場所と同じです。何も変えていません。"
+    Show-Box "そこは、いまの置き場所と同じです。`n`n何も変えていません。" 'Information'
     Wait-IfAsked
     exit 0
   }
 
-  # 🔴 中身は**黙って運ばない**（2026-09-15 の事故）。
-  #    送信箱に選ばれたフォルダの中身は「送信箱の中身」ではなく**買った人の持ち物**。
-  #    こちらの都合で動かしてよいものではない。数と場所を見せて、**必ず聞く**。
-  $r = $null
+  $dest = Join-Path $parent $OutboxName
   $note = ""
-  $count = 0
-  if (Test-Path -LiteralPath $now) { $count = @(Get-ChildItem -LiteralPath $now -Force).Count }
-  if ($count -gt 0) {
-    if (Test-StandardFolder $now) {
-      # 大事なフォルダが送信箱になっていた（昔の設定）。そこの中身は絶対に動かさない。
-      Write-Host ""
-      Warn "いまの送信箱は Windows の大事なフォルダそのものなので、中身は動かしません:"
+
+  if (-not (Test-Path -LiteralPath $now)) {
+    # いまの送信箱が消えている（手で消した人がいる）。新しい場所に作るだけ。
+    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    $note = "`n`n（前の送信箱が見つからなかったので、新しく作りました）"
+  } elseif (Test-Path -LiteralPath $dest) {
+    # 🔴 行き先に同じ名前の送信箱が先にあった。**上書きしない**で中身を足す。
+    $r = Move-OutboxContents $now $dest
+    if ($r.moved -gt 0) { Say "中身を $($r.moved) 個、移しました。" }
+    if ($r.left -gt 0) {
+      Warn "$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:"
       Say "  $now"
-      $note = "`n`n前の送信箱は Windows の大事なフォルダそのものなので、中身は動かしていません:`n$now"
+      $note = "`n`n$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:`n$now"
     } else {
-      $ans = [System.Windows.Forms.MessageBox]::Show(
-        "いまの送信箱に $count 個あります。`n`n$now`n`n新しい送信箱へ移しますか？`n`n" +
-        "「いいえ」を選ぶと、いまの場所にそのまま残します。",
-        "Mr.Drop — 中身をどうしますか",
-        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-        [System.Windows.Forms.MessageBoxIcon]::Question)
-      if ($ans -eq [System.Windows.Forms.DialogResult]::Yes) {
-        $r = Move-OutboxContents $now $new
-      } else {
-        Write-Host ""
-        Say "中身は動かしませんでした（いまの場所に残っています）。"
-        $note = "`n`n中身は動かしていません（前の場所にそのまま残っています）:`n$now"
-      }
+      $note = "`n`n（行き先に同じ名前の送信箱があったので、中身を足しました）"
+    }
+  } else {
+    # ふつうはこちら。**フォルダごと**動かす。
+    try {
+      Move-Item -LiteralPath $now -Destination $dest -ErrorAction Stop
+    } catch {
+      Fail "動かせませんでした:`n   $now`n   → $dest`n   $($_.Exception.Message)"
     }
   }
 
   $cfg = Read-Config
-  Set-Prop $cfg "outbox" $new
+  Set-Prop $cfg "outbox" $dest
   Write-Config $cfg
 
   Write-Host ""
-  Say "送信箱を変えました: $new"
-  $msg = "送信箱を変えました:`n`n$new"
-  if ($r -and $r.moved -gt 0) {
-    Say "中身を $($r.moved) 個、引っ越しました。"
-    $msg += "`n`n中身を $($r.moved) 個、引っ越しました。"
-  }
-  if ($r -and $r.left -gt 0) {
-    Warn "$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:"
-    Say "  $now"
-    $msg += "`n`n$($r.left) 個は同じ名前が先にあったので、前の場所に残してあります:`n$now"
-  }
+  Say "送信箱を動かしました: $dest"
   # 🔴 雫から呼ばれたときは黒い画面が見えない。必ず窓で知らせる。
-  Show-Box ($msg + $note) 'Information'
+  Show-Box ("送信箱を動かしました:`n`n$dest" + $note) 'Information'
   if (Restart-Tray) { Say "常駐を入れ直したので、もう効いています。" }
   else { Warn "動いていなければ、次に Mr.Drop を開いたときから効きます。" }
   Write-Host ""
