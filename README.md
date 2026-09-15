@@ -37,9 +37,9 @@ node server/mrdrop.js
 こう出ます。
 
 ```
-  Mr.Drop 1.0.3   MY-PC
+  Mr.Drop 1.0.4   MY-PC
 ────────────────────────────────────────────────────
-  保存先  C:\Users\<あなた>\Downloads
+  受信先  C:\Users\<あなた>\Downloads
   送信箱  C:\Users\<あなた>\Desktop\Mr.Drop送信箱
 ────────────────────────────────────────────────────
   iPhone アプリは自動で見つけます。ブラウザから使うときはこちら:
@@ -49,7 +49,7 @@ node server/mrdrop.js
   自動発見  _mrdrop._tcp で広告中
 ```
 
-Mac では保存先が **`~/Downloads`**（ダウンロードフォルダそのもの）になります
+Mac では受信先が **`~/Downloads`**（ダウンロードフォルダそのもの）になります
 （`~/Desktop` は iCloud 同期の対象で、数GB の動画が勝手に上がってしまうため）。
 
 **Mac に配るのは `Mr.Drop.app`（メニューバー常駐）です。**Node を同梱しているので、
@@ -106,7 +106,7 @@ Mac では保存先が **`~/Downloads`**（ダウンロードフォルダその�
 ```
 
 `-Uninstall` は、自動起動・壁の穴・スタートメニュー・`%LOCALAPPDATA%\MrDrop`（プログラム・
-設定・記録）を全部外します。**保存先と送信箱の中身には触りません。**
+設定・記録）を全部外します。**受信先と送信箱の中身には触りません。**
 
 Mac は `launchd` に登録します（ログイン時に立ち上がります）。**これは開発者向け**で、
 配布する `Mr.Drop.app` はメニューの「ログイン時に起動」で同じことができます。
@@ -178,7 +178,7 @@ node build/make-package.js
 ```
 
 `_build/MrDrop_v<版>_win.zip` ができます。入口の `.bat` は4本
-（`はじめる.bat`・`アンインストール.bat`・`保存先を変える.bat`・`保存先を開く.bat`）と
+（`はじめる.bat`・`アンインストール.bat`・`受信先を変える.bat`・`受信先を開く.bat`）と
 `scripts/run-once.bat`。あとは `取扱説明書.html`・`server/`・`scripts/`。
 受け取った人は**どこかに展開して `はじめる.bat` を押すだけ**で、そのあとフォルダは捨てられます。
 
@@ -208,7 +208,7 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 - **Node は同梱しています**（nodejs.org の公式バイナリ・arm64 と Intel の universal）。
   受け取る人の Mac には何も要りません。🔴 Homebrew の node は持ち出せません（他の Mac で動かない）
 - Developer ID で署名して Apple の公証を通します。通さないと「開発元を確認できない」で開けません
-- 保存先は `~/Downloads`（ダウンロードフォルダそのもの）。メニューの「保存先を変える…」で Premiere の素材フォルダにできます
+- 受信先は `~/Downloads`（ダウンロードフォルダそのもの）。メニューの「受信先を変える…」で Premiere の素材フォルダにできます
 - 設定は `~/Library/Application Support/Mr.Drop/config.json`、記録は `~/Library/Logs/MrDrop/mrdrop.log`
   （メニューの「記録を開く」で開きます。問い合わせのときはこれを送ってもらう）
 - アプリを強制終了しても受信サーバーは残りません（`--follow-stdin`。`test/follow.test.js` で固定）
@@ -232,7 +232,7 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 | iPhone から開けない | PC と同じ Wi-Fi か。`install-windows.ps1` でファイアウォールを開けたか |
 | `.local` で開けない | 代わりに IP（`http://192.168.…`）で開く |
 | アプリが PC を見つけない | `node server/mrdrop.js --browse` で PC 自身が見つけられるか確かめる。<br>見つかるならアプリ側（`Info.plist` の `NSBonjourServices`）を疑う |
-| 大きい動画が途中で止まる | 半端なファイルは保存先に出さない作りです。もう一度送ってください |
+| 大きい動画が途中で止まる | 半端なファイルは受信先に出さない作りです。もう一度送ってください |
 | 動いているか分からない | **タスクバー右下のアイコン**。🔴 **Windows 11 は新しいアイコンを既定で「∧」の中に隠す**ので、まず ∧ を開くこと。それでも無ければ動いていません |
 | 自動起動しているか分からない | `%LOCALAPPDATA%\MrDrop\app\scripts\install-windows.ps1 -Status` |
 | やめたい | アイコンを右クリック > Mr.Drop をアンインストール（または `アンインストール.bat`） |
@@ -245,5 +245,5 @@ bash build/make-mac-app.sh --no-notarize  # 手元で動かして確かめるだ
 node server/test/run.js
 ```
 
-`../` でどこにでも書けないこと、途中で切れたものを保存先に出さないこと、
+`../` でどこにでも書けないこと、途中で切れたものを受信先に出さないこと、
 mDNS のパケットを組んで読み戻せることを固定してあります。

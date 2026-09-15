@@ -77,7 +77,7 @@ const T = {
                        line("Windows 11 は新しいアイコンを最初は隠します", "small")),
   s6_suteru:    bottom(line("ZIP も展開したフォルダも、捨てて OK")),
   s6_yameru:    bottom(line("やめるのもワンクリック（アンインストール）")),
-  s6_hozonsaki: bottom(line("保存先を、編集用の素材フォルダにできる")),
+  s6_hozonsaki: bottom(line("受信先を、編集用の素材フォルダにできる")),
   // S7
   s7_gyaku:     bottom(line("PC → iPhone もできる") +
                        line("デスクトップの「Mr.Drop送信箱」に置くだけ", "small")),

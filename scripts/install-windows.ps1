@@ -201,7 +201,7 @@ if ($Uninstall) {
   }
 
   Write-Host ""
-  Say "🔵 届いたファイルはそのままです（保存先も送信箱も触っていません）。"
+  Say "🔵 届いたファイルはそのままです（受信先も送信箱も触っていません）。"
   Write-Host ""
   exit 0
 }
@@ -355,7 +355,7 @@ Write-Host "  🔵 タスクバーの右下に Mr.Drop のアイコン（青い�
 Write-Host "     見当たらないときは「∧」を押してください。Windows 11 は新しいアイコンを"
 Write-Host "     最初は隠します。雫をドラッグしてタスクバーへ出しておくと、"
 Write-Host "     動いているかがひと目で分かります。"
-Write-Host "     右クリックで「保存先を変える」「アンインストール」ができます。"
+Write-Host "     右クリックで「受信先を変える」「アンインストール」ができます。"
 Write-Host ""
 Write-Host "  🔵 展開したフォルダは、もう消して構いません。" -ForegroundColor Green
 Write-Host "     この PC の中（$AppRoot）へ写してあります。"

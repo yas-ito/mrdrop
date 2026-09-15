@@ -16,7 +16,7 @@ const { load, defaultFile, fixStaleOutbox } = require("./lib/config");
 const { createServer } = require("./lib/http");
 const { Responder, browse, localIPv4s } = require("./lib/mdns");
 
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 const ROOT = path.join(__dirname, "..");
 // 記録の置き場所。Windows は %LOCALAPPDATA%\MrDrop、Mac は ~/Library/Logs/MrDrop。
 // 🔴 Mac で os.tmpdir() に置くと 3 日で掃除され、問い合わせのときに読めなくなる（Mac 版アプリの
@@ -100,7 +100,7 @@ async function main() {
   fs.mkdirSync(cfg.outbox, { recursive: true });
 
   // 🔴 前に落ちたときの作業用フォルダが残っていることがある。空なら消す。
-  //    保存先に見慣れないフォルダが1つ増えているのは、それだけで不安の元（本人が発見）。
+  //    受信先に見慣れないフォルダが1つ増えているのは、それだけで不安の元（本人が発見）。
   //    書きかけの .part は残っていても捨ててよい（途中のものは再開しない作りなので）。
   try {
     const part = path.join(cfg.inbox, ".mrdrop-part");
@@ -134,7 +134,7 @@ async function main() {
   log("");
   log(`  Mr.Drop ${VERSION}   ${cfg.displayName}`);
   log(line);
-  log(`  保存先  ${cfg.inbox}`);
+  log(`  受信先  ${cfg.inbox}`);
   log(`  送信箱  ${cfg.outbox}`);
   if (movedOutbox) {
     log(`  🔵 送信箱を、デスクトップの本当の場所へ移しました（${movedOutbox.moved} 個）`);

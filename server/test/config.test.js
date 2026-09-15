@@ -38,7 +38,7 @@ module.exports = async function (t) {
     //    iPhone へ渡す物を置く場所なので、目に見えてすぐ放り込める所に置く。
     //    デスクトップ「そのもの」にはしない（中身が同じ Wi-Fi から一覧できるため）。
     eq(outbox, path.join(realDesk, OUTBOX), "送信箱はデスクトップの中の専用フォルダ");
-    ok(outbox !== inbox, "🔴 送信箱と保存先が同じ場所になっていない");
+    ok(outbox !== inbox, "🔴 送信箱と受信先が同じ場所になっていない");
   });
 
   // 🔴 これが 2026-09-15 の取りこぼしそのものです。%USERPROFILE%\Desktop を決め打ちしていたので、
@@ -52,7 +52,7 @@ module.exports = async function (t) {
   });
 
   // 🔴 settings-windows.ps1 にも同じ既定が書いてある。ここがずれると、
-  //    一度も起動していない人が先に「保存先を変える.bat」を押したとき、
+  //    一度も起動していない人が先に「受信先を変える.bat」を押したとき、
   //    間違った既定が config.json に書き込まれて固定される（Mac 側の指摘 2026-09-12・実際にずれていた）。
   //    手で揃えるのは必ずまた外すので、機械で突き合わせる。
   suite("置き場所 — PowerShell 側の既定と食い違っていない", () => {
@@ -103,14 +103,14 @@ module.exports = async function (t) {
       const cfg = load(file);
       ok(fs.existsSync(file), "無ければ作る");
       eq(cfg.port, defaults().port, "番号は既定のまま");
-      ok(path.isAbsolute(cfg.inbox), "保存先は絶対パスになっている");
+      ok(path.isAbsolute(cfg.inbox), "受信先は絶対パスになっている");
       ok(cfg.inbox.startsWith(os.homedir() + path.sep), "🔴 カレントではなく家の中に作る");
       ok(String(cfg.displayName).length > 0, "名前が空なら PC 名が入る");
 
       // 書いてある値が既定より優先される（~ も展開される）
-      fs.writeFileSync(file, JSON.stringify({ inbox: "~/保存先テスト", port: "48631" }), "utf8");
+      fs.writeFileSync(file, JSON.stringify({ inbox: "~/受信先テスト", port: "48631" }), "utf8");
       const cfg2 = load(file);
-      eq(cfg2.inbox, path.join(os.homedir(), "保存先テスト"), "書いてあれば そちらを使う");
+      eq(cfg2.inbox, path.join(os.homedir(), "受信先テスト"), "書いてあれば そちらを使う");
       eq(cfg2.port, 48631, "文字列で書かれた番号も数にする");
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -236,7 +236,7 @@ module.exports = async function (t) {
     ok(/if \(\$ChooseOutbox\)/.test(psSrc), "受けたあと、実際に選ばせている");
     ok(/Move-OutboxContents \$now \$new/.test(psSrc), "🔴 中身も一緒に引っ越している");
     ok(/Test-SamePlace \$new \(Get-InboxPath\)/.test(psSrc),
-       "🔴 保存先と同じ場所は断っている（届いた物が全部見えてしまう）");
+       "🔴 受信先と同じ場所は断っている（届いた物が全部見えてしまう）");
 
     // 🔴 .cs を直してビルドを忘れると、配るのは古いアイコンのまま。機械で見る。
     const exe = path.join(__dirname, "..", "..", "tray", "MrDropTray.exe");
@@ -245,6 +245,34 @@ module.exports = async function (t) {
     ok(bin.includes(Buffer.from("送信箱を開く", "utf16le")),
        "🔴 作り直した MrDropTray.exe にも入っている（build\\build-tray.ps1 を忘れていない）");
     ok(bin.includes(Buffer.from("送信箱を変える...", "utf16le")), "🔴 「送信箱を変える...」も入っている");
+  });
+
+  // 🔴 「保存先」をやめて「受信先」に統一した（本人の指示 2026-09-15）。
+  //    「送信箱」と並んだとき、「保存先」だけ**何の保存先か分からない**ため。
+  //    🔴 **言葉がバラバラなのが一番こまる**ので、戻っていないかを機械で見る。
+  suite("言葉づかい — 「保存先」はもう使わない", () => {
+    const files = [
+      "取扱説明書.html", "README.md",
+      "scripts/settings-windows.ps1", "scripts/install-windows.ps1",
+      "tray/MrDropTray.cs", "server/lib/ui.js", "server/lib/config.js", "server/mrdrop.js",
+    ];
+    for (const f of files) {
+      const p = path.join(__dirname, "..", "..", ...f.split("/"));
+      if (!fs.existsSync(p)) { ok(true, f + " が無い"); continue; }
+      let src = fs.readFileSync(p, "utf8");
+      // 🔵 更新履歴だけは別。「『保存先』という呼び方を『受信先』に変えました」と
+      //    **古い言葉に触れないと伝わらない**ので、そこは見ない。
+      src = src.split("<h2>更新履歴</h2>")[0];
+      ok(!src.includes("保存先"), f + " に「保存先」が残っていない");
+    }
+    // 🔵 Mac 側（mac/main.swift・取扱説明書-Mac.html）は**相手の持ち場**なので、ここでは見ない。
+    //    iOS アプリの「保存先」は *iPhone 側*（写真アプリに入れるか）の話で、別物。触らない。
+    const exe = path.join(__dirname, "..", "..", "tray", "MrDropTray.exe");
+    if (!fs.existsSync(exe)) { ok(true, "MrDropTray.exe が無い"); return; }
+    const bin = fs.readFileSync(exe);
+    ok(bin.includes(Buffer.from("受信先を開く", "utf16le")),
+       "🔴 作り直した MrDropTray.exe も「受信先」になっている");
+    ok(!bin.includes(Buffer.from("保存先を開く", "utf16le")), "🔴 古い言葉が exe に残っていない");
   });
 
   // 🔴 送信箱の場所を変えられるようにした（本人の指示 2026-09-15）。
@@ -345,7 +373,7 @@ module.exports = async function (t) {
   });
 
   // 🔴 settings-windows.ps1 が別の config.json を読み書きしていたら、
-  //    「保存先を変える」を押しても常駐側には何も効かない（黙って外れるのが一番こまる）。
+  //    「受信先を変える」を押しても常駐側には何も効かない（黙って外れるのが一番こまる）。
   suite("設定ファイル — PowerShell 側と同じ場所を見ている", () => {
     const ps1 = path.join(__dirname, "..", "..", "scripts", "settings-windows.ps1");
     if (!fs.existsSync(ps1)) { ok(true, "settings-windows.ps1 が無い（配布物の中では省かれる）"); return; }

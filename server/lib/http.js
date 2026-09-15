@@ -12,7 +12,7 @@ const { execFile } = require("child_process");
 const { safeName, uniqueName, humanSize } = require("./names");
 const { page } = require("./ui");
 
-// 書きかけの置き場。保存先と同じドライブに置くので、出来上がりを**移動ではなくリンク**で
+// 書きかけの置き場。受信先と同じドライブに置くので、出来上がりを**移動ではなくリンク**で
 // 済ませられる（数GBの動画を二度書きしない）。
 //
 // 🔴 先頭のドットは Windows では何も隠さない。Mac では見えないので気づけないが、
@@ -208,7 +208,7 @@ function createServer(cfg, log = console.log) {
         try {
           await pipeline(req, fs.createWriteStream(tmp));
         } catch (e) {
-          // 🔴 途中で切れたものは絶対に保存先へ出さない。半端なファイルは事故のもと。
+          // 🔴 途中で切れたものは絶対に受信先へ出さない。半端なファイルは事故のもと。
           await fsp.rm(tmp, { force: true });
           await tidyPartDir(partDir);
           log(`⚠️ 途中で切れました: ${wanted}（${e.code || e.message}）`);

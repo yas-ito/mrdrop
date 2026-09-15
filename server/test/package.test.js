@@ -22,7 +22,7 @@ const BS = String.fromCharCode(92);
 const SIGIL = String.fromCharCode(36);
 
 // 配る .bat（build/make-package.js の BATS と同じ顔ぶれ）
-const BATS = ["はじめる.bat", "アンインストール.bat", "保存先を変える.bat", "保存先を開く.bat", "scripts/run-once.bat"];
+const BATS = ["はじめる.bat", "アンインストール.bat", "受信先を変える.bat", "受信先を開く.bat", "scripts/run-once.bat"];
 
 // 同梱ビルド（--with-node）のときだけ現れるもの。ソースの木には無くてよい。
 const ONLY_IN_PACKAGE = ["node/node.exe"];
@@ -116,7 +116,7 @@ module.exports = async function (t) {
       ok(src.includes("CreateNoWindow"), "🔴 黒い画面を出さない");
       // 🔴 既定値を書き写さない。config.js とずれたときに黙って食い違う
       ok(!src.includes("48630"), "🔴 番号の既定をここに書き写していない");
-      ok(!src.includes("Downloads"), "🔴 保存先の既定をここに書き写していない");
+      ok(!src.includes("Downloads"), "🔴 受信先の既定をここに書き写していない");
       // 設定を触る操作は .ps1 に任せる（実装を2つ持たない）
       ok(src.includes("settings-windows.ps1"), "設定は scripts/settings-windows.ps1 に任せる");
     }

@@ -15,8 +15,8 @@
 //   MrDrop_v<版>_win/はじめる.bat                 ← 🔴 1回押すと %LOCALAPPDATA% へ写って常駐
 //   MrDrop_v<版>_win/MrDropTray.exe               ← 🔴 タスクバー常駐（本体を抱える）
 //   MrDrop_v<版>_win/アンインストール.bat         ← 入れる前に戻す（届いたファイルは残る）
-//   MrDrop_v<版>_win/保存先を変える.bat           ← フォルダ選択で保存先を変える
-//   MrDrop_v<版>_win/保存先を開く.bat             ← 保存先をエクスプローラで開く
+//   MrDrop_v<版>_win/受信先を変える.bat           ← フォルダ選択で受信先を変える
+//   MrDrop_v<版>_win/受信先を開く.bat             ← 受信先をエクスプローラで開く
 //   MrDrop_v<版>_win/取扱説明書.html
 //   MrDrop_v<版>_win/server/…                     ← 本体（外部パッケージゼロ）
 //   MrDrop_v<版>_win/scripts/run-once.bat         ← 入れずに1回だけ動かしたい人用
@@ -106,7 +106,7 @@ const manual = (buf, bundled) => {
 // 🔴 .bat は**渡す ZIP の中だけ**の入口。入れたあと（%LOCALAPPDATA%\MrDrop\app）には
 //    写さない（cmd.exe が実行中の .bat を掴んだままなので、やめる操作で事故る）。
 //    入れたあとの入口はスタートメニューのショートカット。install-windows.ps1 を見ること。
-const BATS = ["はじめる.bat", "アンインストール.bat", "保存先を変える.bat", "保存先を開く.bat", "scripts/run-once.bat"];
+const BATS = ["はじめる.bat", "アンインストール.bat", "受信先を変える.bat", "受信先を開く.bat", "scripts/run-once.bat"];
 const bats = BATS.map((n) => {
   let b = read(n);
   if (b.some((c) => c >= 128)) fail(n + " に非ASCIIが混ざっています（cmd が CP932 で読むため壊れます）");

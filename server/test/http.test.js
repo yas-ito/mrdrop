@@ -1,6 +1,6 @@
 "use strict";
 // 実際にサーバーを立てて、本当に受け取れるかを通しで確かめる。
-// 🔴 いちばん大事なのは「途中で切れたものを保存先に出さない」こと。ここを必ず踏む。
+// 🔴 いちばん大事なのは「途中で切れたものを受信先に出さない」こと。ここを必ず踏む。
 const fs = require("fs");
 const fsp = require("fs/promises");
 const os = require("os");
@@ -60,10 +60,10 @@ module.exports = async function (t) {
 
     const r3 = await req(port, "PUT", "/put/" + encodeURIComponent("../../nasty.txt"), "X");
     eq(r3.status, 200, "危ない名前でも 200（弾かず、安全な名前に直す）");
-    ok(fs.existsSync(path.join(cfg.inbox, "nasty.txt")), "保存先の中に落ちる");
-    ok(!fs.existsSync(path.join(base, "nasty.txt")), "🔴 保存先の外には絶対に出さない");
+    ok(fs.existsSync(path.join(cfg.inbox, "nasty.txt")), "受信先の中に落ちる");
+    ok(!fs.existsSync(path.join(base, "nasty.txt")), "🔴 受信先の外には絶対に出さない");
 
-    // 🔴 保存先に見慣れないフォルダを残さない（本人が発見 2026-09-12）。
+    // 🔴 受信先に見慣れないフォルダを残さない（本人が発見 2026-09-12）。
     //    先頭のドットは Windows では何も隠さないので、ダウンロードフォルダに
     //    空の .mrdrop-part が1つ増えて見えていた。
     //    「専用のフォルダを勝手に作らない」と決めた以上、ここも残してはいけない。
@@ -71,7 +71,7 @@ module.exports = async function (t) {
        "🔴 転送が終わったら、書きかけの置き場は残らない");
     eq(fs.readdirSync(cfg.inbox).sort().join(","),
        ["写真.jpg", "写真 (2).jpg", "nasty.txt"].sort().join(","),
-       "🔴 保存先に増えるのは届いたファイルだけ");
+       "🔴 受信先に増えるのは届いたファイルだけ");
   });
 
   await suite("途中で切れたものは出さない", async () => {
@@ -86,7 +86,7 @@ module.exports = async function (t) {
       sock.on("error", () => resolve());
     });
     await sleep(300);
-    eq(fs.readdirSync(cfg.inbox).length, before, "保存先にファイルが増えていない");
+    eq(fs.readdirSync(cfg.inbox).length, before, "受信先にファイルが増えていない");
     ok(!fs.existsSync(path.join(cfg.inbox, "half.bin")), "半端なファイルは残らない");
     const parts = fs.existsSync(path.join(cfg.inbox, PART_DIR))
       ? fs.readdirSync(path.join(cfg.inbox, PART_DIR)) : [];

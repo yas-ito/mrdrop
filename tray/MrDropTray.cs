@@ -11,7 +11,7 @@
 //      （管理者が要るのはファイアウォールを開ける1回だけ）
 //
 // 🔴 設定を触る操作は**自分で実装せず、scripts\settings-windows.ps1 を呼ぶ**。
-//    保存先の既定値や config.json の書き方を2か所に持つと必ずずれる。
+//    受信先の既定値や config.json の書き方を2か所に持つと必ずずれる。
 //    実際、config.js と .ps1 の既定がずれて事故ったことがある（2026-09-12）。
 //
 // ビルド: build\build-tray.ps1（Windows 標準の csc.exe だけ。SDK 不要）
@@ -89,12 +89,12 @@ namespace MrDrop
             var menu = new ContextMenuStrip();
             menu.Items.Add(stateItem);
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add(new ToolStripMenuItem("保存先を開く", null, (s, e) => RunSettings("-OpenInbox", false)));
+            menu.Items.Add(new ToolStripMenuItem("受信先を開く", null, (s, e) => RunSettings("-OpenInbox", false)));
             // 🔴 送信箱はデスクトップの中だが、**デスクトップの場所は人によって違う**
             //    （OneDrive でデスクトップを移している人がいる）。2026-09-15 に買った人が
             //    「送信箱がデスクトップに出てこない」で詰まった。ここから必ず開ける。
             menu.Items.Add(new ToolStripMenuItem("送信箱を開く", null, (s, e) => RunSettings("-OpenOutbox", false)));
-            menu.Items.Add(new ToolStripMenuItem("保存先を変える...", null, (s, e) => ChangeInbox()));
+            menu.Items.Add(new ToolStripMenuItem("受信先を変える...", null, (s, e) => ChangeInbox()));
             menu.Items.Add(new ToolStripMenuItem("送信箱を変える...", null, (s, e) => ChangeOutbox()));
             menu.Items.Add(new ToolStripMenuItem("この PC の名前を変える...", null, (s, e) => ChangeName()));
             menu.Items.Add(new ToolStripMenuItem("取扱説明書", null, (s, e) => OpenManual()));
@@ -277,7 +277,7 @@ namespace MrDrop
 
         void ChangeInbox()
         {
-            // 🔴 保存先は起動したときにしか読まない。変えたら**こちらで入れ直す**。
+            // 🔴 受信先は起動したときにしか読まない。変えたら**こちらで入れ直す**。
             //    前は .ps1 がタスクを入れ直していたが、いまは本体を抱えているのは私。
             RunSettings("-ChooseInbox -FromTray", true);
             RestartServer();
@@ -312,7 +312,7 @@ namespace MrDrop
             var ok = MessageBox.Show(
                 "Mr.Drop をこのパソコンから外します。\n\n" +
                 "・自動起動\n・ファイアウォールに開けた穴\n・入れたプログラムと設定と記録\n\n" +
-                "届いたファイルは消しません。保存先も送信箱もそのままです。\n\n" +
+                "届いたファイルは消しません。受信先も送信箱もそのままです。\n\n" +
                 "よろしいですか？",
                 Program.AppName, MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
             if (ok != DialogResult.OK) return;
