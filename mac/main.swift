@@ -11,7 +11,7 @@
 // サーバー本体は server/ の JS のまま（Windows と共通）。この Swift がやるのは
 //   ・同梱の node で server/mrdrop.js を子プロセスとして回し、出力を読む
 //   ・メニューバーに状態と住所を出す
-//   ・保存先／合言葉／ログイン時起動の面倒を見る
+//   ・受信先／合言葉／ログイン時起動の面倒を見る
 // だけ。**転送のロジックをこちらに書かない**（両 OS で二重になる）。
 import AppKit
 import ServiceManagement
@@ -32,7 +32,8 @@ final class App: NSObject, NSApplicationDelegate {
     private var server: Process?
     private var status = "起動中…"
     private var addresses: [String] = []       // サーバーが名乗った住所（http://…）
-    private var inboxFromServer: String?       // サーバーが実際に使っている保存先
+    private var inboxFromServer: String?       // サーバーが実際に使っている受信先
+    private var outboxFromServer: String?      // サーバーが実際に使っている送信箱
     private var nameFromServer: String?        // iPhone の一覧に出ている名前（displayName）
     private var logFile: String?               // サーバーの記録ファイル
     private var received = 0
@@ -128,6 +129,7 @@ final class App: NSObject, NSApplicationDelegate {
         stopServer()
         addresses.removeAll()
         inboxFromServer = nil
+        outboxFromServer = nil
         pending = ""
         startServer()
     }
@@ -171,8 +173,11 @@ final class App: NSObject, NSApplicationDelegate {
                 if let sp = rest.firstIndex(of: " ") {
                     nameFromServer = String(rest[sp...]).trimmingCharacters(in: .whitespaces)
                 }
-            } else if line.hasPrefix("保存先") {
+            } else if line.hasPrefix("受信先") {
                 inboxFromServer = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+            } else if line.hasPrefix("送信箱") {
+                // 🔵 「🔵 送信箱を、デスクトップの…」の行は先頭が🔵なので、ここには来ない
+                outboxFromServer = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
             } else if line.hasPrefix("記録") {
                 logFile = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             } else if line.contains("すでに使われています") {
@@ -208,8 +213,11 @@ final class App: NSObject, NSApplicationDelegate {
             }
         }
         m.addItem(.separator())
-        add(m, "保存先を開く", #selector(openInbox), key: "o")
-        add(m, "保存先を変える…", #selector(chooseInbox))
+        add(m, "受信先を開く", #selector(openInbox), key: "o")
+        add(m, "受信先を変える…", #selector(chooseInbox))
+        // 🔵 Windows 版（雫の右クリック）と同じ2つ。送信箱がどこにあっても、ここから開ける。
+        add(m, "送信箱を開く", #selector(openOutbox))
+        add(m, "送信箱を移動する…", #selector(moveOutbox))
         add(m, "この PC の名前を変える…", #selector(setName))
         add(m, "合言葉を決める…", #selector(setToken))
         add(m, "記録を開く", #selector(openLog))
@@ -240,6 +248,107 @@ final class App: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.open(inbox)
     }
 
+    /// 送信箱（iPhone へ渡す物を置く場所）を開く。
+    /// 🔵 ふだんはデスクトップの中だが、下の「移動する…」で動かせるので、ここが逃げ道になる。
+    @objc private func openOutbox() {
+        try? FileManager.default.createDirectory(at: outbox, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(outbox)
+    }
+
+    /// 送信箱を、選んだ場所へ**フォルダごと**移す（中身も付いていく）。
+    ///
+    /// 🔴 選んでもらうのは**置き場所（親フォルダ）だけ**。送信箱の名前は変えない。
+    ///    Windows 版は「好きなフォルダを送信箱にできる」作りで事故を起こしている
+    ///    （買った人の持ち物が送信箱になり、次に変えたとき中身ごと運んだ。2026-09-15）。
+    ///    **動かしてよいのは Mr.Drop が作った「Mr.Drop送信箱」だけ。**
+    /// 🔵 中身・文言とも Windows 版（scripts/settings-windows.ps1 の -MoveOutbox）と揃えてある。
+    ///    どちらかを直したら、もう片方も。
+    @objc private func moveOutbox() {
+        let fm = FileManager.default
+        let now = outbox
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = now.deletingLastPathComponent()
+        panel.message = "「\(Self.outboxName)」をどこに置きますか。フォルダごと、その中へ移します（中身もそのまま付いていきます）。"
+        panel.prompt = "ここに置く"
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let parent = panel.url else { return }
+
+        // 置ける場所かを先に試す。動かす途中で失敗するより、いま分かった方がよい。
+        let probe = parent.appendingPathComponent(".mrdrop-write-test")
+        do {
+            try "ok".write(to: probe, atomically: true, encoding: .utf8)
+            try? fm.removeItem(at: probe)
+        } catch {
+            alert("そこには置けません", "書き込めませんでした:\n\(parent.path)\n\n別の場所を選んでください。")
+            return
+        }
+
+        if samePlace(parent, now.deletingLastPathComponent()) {
+            alert("そこは、いまの置き場所と同じです", "何も変えていません。")
+            return
+        }
+
+        let dest = parent.appendingPathComponent(Self.outboxName)
+        var note = ""
+        if !fm.fileExists(atPath: now.path) {
+            // いまの送信箱が消えている（手で消した人がいる）。新しい場所に作るだけ。
+            try? fm.createDirectory(at: dest, withIntermediateDirectories: true)
+            note = "\n\n（前の送信箱が見つからなかったので、新しく作りました）"
+        } else if now.lastPathComponent != Self.outboxName {
+            // 🔴 前の送信箱が「あなたのフォルダ」。動かすと名前まで変えて運ぶことになる。触らない。
+            try? fm.createDirectory(at: dest, withIntermediateDirectories: true)
+            note = "\n\n前の送信箱はあなたのフォルダ（\(now.lastPathComponent)）でした。\n動かさず、そのまま残してあります:\n\(now.path)"
+        } else if fm.fileExists(atPath: dest.path) {
+            // 🔴 行き先に同じ名前の送信箱が先にあった。**上書きしない**で中身を足す。
+            let r = mergeOutbox(now, dest)
+            if r.left > 0 {
+                note = "\n\n\(r.left) 個は同じ名前が先にあったので、前の場所に残してあります:\n\(now.path)"
+            } else {
+                note = "\n\n（行き先に同じ名前の送信箱があったので、中身を足しました）"
+                // 空になったときだけ片付ける。中身が残っているフォルダは消さない。
+                if let rest = try? fm.contentsOfDirectory(atPath: now.path), rest.isEmpty {
+                    try? fm.removeItem(at: now)
+                }
+            }
+        } else {
+            // ふつうはこちら。**フォルダごと**動かす。
+            do {
+                try fm.moveItem(at: now, to: dest)
+            } catch {
+                alert("動かせませんでした", "\(now.path)\n→ \(dest.path)\n\n\(error.localizedDescription)")
+                return
+            }
+        }
+
+        writeConfig { $0["outbox"] = dest.path }
+        restartServer()
+        alert("送信箱を動かしました", dest.path + note)
+    }
+
+    /// 同じ場所か。シンボリックリンク（/tmp → /private/tmp など）を開いてから比べる。
+    private func samePlace(_ a: URL, _ b: URL) -> Bool {
+        let x = a.resolvingSymlinksInPath().standardizedFileURL.path
+        let y = b.resolvingSymlinksInPath().standardizedFileURL.path
+        return x.compare(y, options: [.caseInsensitive]) == .orderedSame
+    }
+
+    /// 中身を1つずつ移す。**同じ名前が先にあるものは動かさない**（上書きしない）。
+    private func mergeOutbox(_ from: URL, _ to: URL) -> (moved: Int, left: Int) {
+        let fm = FileManager.default
+        var moved = 0, left = 0
+        let items = (try? fm.contentsOfDirectory(at: from, includingPropertiesForKeys: nil)) ?? []
+        for it in items {
+            let dest = to.appendingPathComponent(it.lastPathComponent)
+            if fm.fileExists(atPath: dest.path) { left += 1; continue }
+            do { try fm.moveItem(at: it, to: dest); moved += 1 } catch { left += 1 }
+        }
+        return (moved, left)
+    }
+
     @objc private func openLog() {
         let p = logFile ?? FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/MrDrop/mrdrop.log").path
@@ -249,7 +358,7 @@ final class App: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.open(URL(fileURLWithPath: p))
     }
 
-    /// 保存先を選び直す。Premiere の素材フォルダにしておくのが自作の一番のうまみ。
+    /// 受信先を選び直す。Premiere の素材フォルダにしておくのが自作の一番のうまみ。
     @objc private func chooseInbox() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -349,6 +458,18 @@ final class App: NSObject, NSApplicationDelegate {
             return URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
         }
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
+    }
+
+    /// 送信箱の名前。**server/lib/config.js の OUTBOX と同じ**。あちこちに書き散らさない。
+    private static let outboxName = "Mr.Drop送信箱"
+
+    private var outbox: URL {
+        if let p = outboxFromServer { return URL(fileURLWithPath: p) }
+        if let p = readConfig()?["outbox"] as? String {
+            return URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Desktop").appendingPathComponent(Self.outboxName)
     }
 
     private func readConfig() -> [String: Any]? {

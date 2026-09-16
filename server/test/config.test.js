@@ -436,4 +436,45 @@ module.exports = async function (t) {
     ok(/Remove-Item -LiteralPath \$AppDir -Recurse -Force/.test(src),
        "🔴 やめるときは入れたものを消す（アンインストールがある）");
   });
+
+  // 🔴 Mac 版のメニュー（mac/main.swift）。Windows 版と言葉も機能もそろえる。
+  //    2026-09-16、ここで実際に壊れていたのを見つけた: サーバーの出力は「受信先」に変わって
+  //    いたのに、Swift 側は「保存先」で待っていた。**受信先を変えた人の「受信先を開く」が、
+  //    ずっとダウンロードフォルダを開いていた**（エラーは一つも出ない）。
+  suite("Mac 版のメニュー — 言葉と送信箱", () => {
+    const swift = path.join(__dirname, "..", "..", "mac", "main.swift");
+    const doc = path.join(__dirname, "..", "..", "取扱説明書-Mac.html");
+    if (!fs.existsSync(swift)) { ok(true, "mac/main.swift が無い（配布物の中では省かれる）"); return; }
+    const src = fs.readFileSync(swift, "utf8");
+    const serverSrc = fs.readFileSync(path.join(__dirname, "..", "mrdrop.js"), "utf8");
+
+    // 🔴 サーバーが出す見出しと、Swift が待つ言葉が一致していること。ここが今回ずれていた。
+    for (const word of ["受信先", "送信箱"]) {
+      ok(new RegExp("log\\(`  " + word + "  ").test(serverSrc), `サーバーが「${word}」を出している`);
+      ok(src.includes(`line.hasPrefix("${word}")`), `🔴 Swift も「${word}」で待っている（ずれると黙って別の場所を開く）`);
+    }
+    ok(!src.includes("保存先"), "🔴 「保存先」という古い言い方が残っていない（Windows 版と統一）");
+
+    ok(/add\(m, "受信先を開く"/.test(src), "メニューに「受信先を開く」がある");
+    ok(/add\(m, "受信先を変える…"/.test(src), "メニューに「受信先を変える…」がある");
+    ok(/add\(m, "送信箱を開く"/.test(src), "メニューに「送信箱を開く」がある（どこにあっても開ける逃げ道）");
+    ok(/add\(m, "送信箱を移動する…"/.test(src), "メニューに「送信箱を移動する…」がある");
+
+    // 🔴 Windows で2度起こした事故を、こちらでは初めからしない。
+    ok(src.includes(`outboxName = "${OUTBOX}"`), "🔴 送信箱の名前が node 側（config.js の OUTBOX）と同じ");
+    ok(/let dest = parent\.appendingPathComponent\(Self\.outboxName\)/.test(src),
+       "🔴 行き先は「選んだ場所 ＋ 送信箱の名前」（選ばれたフォルダ自体を送信箱にしない）");
+    ok(/now\.lastPathComponent != Self\.outboxName/.test(src),
+       "🔴 前の送信箱が買った人のフォルダなら、動かさずに残す");
+    ok(/try fm\.moveItem\(at: now, to: dest\)/.test(src), "🔴 フォルダごと動かしている（中身だけ運ぶ作りではない）");
+    ok(/if fm\.fileExists\(atPath: dest\.path\) \{ left \+= 1; continue \}/.test(src),
+       "🔴 同じ名前が先にあるものは上書きしない");
+
+    // 🔴 説明書とメニューが食い違うと、押す場所が見つからない。
+    if (!fs.existsSync(doc)) { ok(true, "取扱説明書-Mac.html が無い"); return; }
+    const html = fs.readFileSync(doc, "utf8");
+    for (const word of ["受信先を開く", "受信先を変える…", "送信箱を開く", "送信箱を移動する…"]) {
+      ok(html.includes(word), `説明書にも「${word}」が載っている`);
+    }
+  });
 };
