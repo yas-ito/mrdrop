@@ -10,12 +10,15 @@ iPhone から同じ Wi-Fi の Windows へ送る道具。AirDrop の代わり。
 - `ios/` … iPhone アプリのソース（**Xcode が要るので Mac でしか作れない**）
 - `scripts/` … ファイアウォールと自動起動の面倒を見る PowerShell
 
-## 🔴 Mac と Windows で分担しています
+## 🔴 Mac と Windows は同じ権限です（2026-09-24 本人の決定）
 
-| | 誰が作るか |
+どちらのパソコンでも、どこを直してもよい。「こちらは Mac の担当」という分担はしない。
+道具の都合で、**動かして確かめられる場所**だけが違う：
+
+| | 動かして確かめられるパソコン |
 |---|---|
-| `server/` `scripts/` | **Windows**（ここで動かして確かめられる） |
-| `ios/` | **Mac**（Xcode が Mac にしか無い） |
+| `server/` `scripts/` | Windows（受信サーバーとファイアウォール・自動起動が Windows 用） |
+| `ios/` | Mac（ビルドに Xcode が要る） |
 
 作業を始める前に `git pull` → **`HANDOFF.md` を読む**。
 終わったら**自分の欄を書き換えて** push（積み上げない・古い話は消す）。
