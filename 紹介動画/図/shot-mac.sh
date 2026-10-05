@@ -15,7 +15,10 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-OUT="$REPO/_build/紹介動画/図"
+# 🔵 撮る場所と出す場所は、環境変数で差し替えられる（2本目＝使い方編の図のため）。
+# 何も渡さなければ、これまでどおり 紹介動画/図 → _build/紹介動画/図。
+FIGDIR="${FIGDIR:-$HERE}"
+OUT="${OUTDIR:-$REPO/_build/紹介動画/図}"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 ONLY="${1:-}"
 
@@ -31,12 +34,12 @@ case "$FONTS" in
 esac
 
 mkdir -p "$OUT"
-node "$HERE/gen.js" >/dev/null
+node "$FIGDIR/gen.js" >/dev/null
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-for h in "$HERE"/*.html; do
+for h in "$FIGDIR"/*.html; do
   base="$(basename "$h" .html)"
   [ -z "$ONLY" ] || [ "$base" = "$ONLY" ] || continue
   big="$TMP/${base}_2x.png"
